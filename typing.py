@@ -40,8 +40,10 @@ OPERATORS = CaseInsensitiveSet({
 	'<',
 	'>',
 	'=',
-	'!'
-	#!=, ==, <=, >= very likely need their own
+	'!',
+	'&', #bitwise and
+	'|' #bitwise or
+	#!=, ==, <=, >=, &&, || very likely need their own
 	#special logic in the tokenizer to identify
 })
 
