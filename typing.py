@@ -14,6 +14,11 @@ class CaseInsensitiveSet:
 	def __iter__(self):
 		for name in self._SET:
 			yield name
+	
+	@classmethod
+	def make_union(cls, *others):
+		sets = [other._SET for other in others]
+		return cls(frozenset.union(*sets))
 
 TYPES = CaseInsensitiveSet({
 	'ID',
@@ -32,7 +37,8 @@ KEYWORDS = CaseInsensitiveSet({
 	'BREAK'
 })
 
-OPERATORS = CaseInsensitiveSet({
+#Segregate operators by length, to make it easy to set precedence in the lexer
+ONECHAR_OPERATORS = CaseInsensitiveSet({
 	'+',
 	'-',
 	'/',
@@ -41,11 +47,22 @@ OPERATORS = CaseInsensitiveSet({
 	'>',
 	'=',
 	'!',
-	'&', #bitwise and
-	'|' #bitwise or
-	#!=, ==, <=, >=, &&, || very likely need their own
-	#special logic in the tokenizer to identify
+	'&',
+	'|'
 })
+
+TWOCHAR_OPERATORS = CaseInsensitiveSet({
+	'!=',
+	'==',
+	'<=',
+	'>=',
+	'&&',
+	'||',
+	'++',
+	'--'
+})
+
+ALL_OPERATORS = CaseInsensitiveSet.make_union(ONECHAR_OPERATORS, TWOCHAR_OPERATORS)
 
 #ripped from the re documentation
 #kinda wild that this is in there
