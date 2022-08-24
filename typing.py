@@ -16,17 +16,9 @@ class CaseInsensitiveSet:
 			yield name
 	
 	@classmethod
-	def make_union(cls, *others):
+	def union(cls, *others):
 		sets = [other._SET for other in others]
 		return cls(frozenset.union(*sets))
-
-TYPES = CaseInsensitiveSet({
-	'ID',
-	'NUMBER',
-	'STRING',
-	'KEYWORD',
-	'OPERATOR'
-})
 	
 KEYWORDS = CaseInsensitiveSet({
 	'IF',
@@ -62,16 +54,23 @@ TWOCHAR_OPERATORS = CaseInsensitiveSet({
 	'--'
 })
 
-ALL_OPERATORS = CaseInsensitiveSet.make_union(ONECHAR_OPERATORS, TWOCHAR_OPERATORS)
+ALL_OPERATORS = CaseInsensitiveSet.union(ONECHAR_OPERATORS, TWOCHAR_OPERATORS)
 
-#ripped from the re documentation
-#kinda wild that this is in there
-class Token:
-	#type is a global function, why is official documentation endorsing this name???
-	#type : str
-	
-	#We'll just call it typename, I guess?
-    typename: str
-    value: str
-    line: int
-    column: int
+TYPES = CaseInsensitiveSet({
+	'OPERATOR',
+	'KEYWORD',
+	'STRING',
+	'NUMBER',
+	'ID'
+})
+
+def typename(text):
+	if text in ALL_OPERATORS:
+		return 'OPERATOR'
+	elif text in KEYWORDS:
+		return 'KEYWORD'
+	elif text[0] == '"' and text[-1] == '"':
+		return 'STRING'
+	elif text.isdigit():
+		return 'NUMBER'
+	return 'ID'
