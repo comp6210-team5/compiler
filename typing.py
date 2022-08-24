@@ -16,12 +16,12 @@ class CaseInsensitiveSet:
 			yield name
 
 TYPES = CaseInsensitiveSet({
-		'ID',
-		'NUMBER',
-		'STRING',
-		'KEYWORD',
-		'CONTROL'
-	})
+	'ID',
+	'NUMBER',
+	'STRING',
+	'KEYWORD',
+	'OPERATOR'
+})
 	
 KEYWORDS = CaseInsensitiveSet({
 	'IF',
@@ -30,6 +30,19 @@ KEYWORDS = CaseInsensitiveSet({
 	'SWITCH',
 	'CASE',
 	'BREAK'
+})
+
+OPERATORS = CaseInsensitiveSet({
+	'+',
+	'-',
+	'/',
+	'*',
+	'<',
+	'>',
+	'=',
+	'!'
+	#!=, ==, <=, >= very likely need their own
+	#special logic in the tokenizer to identify
 })
 
 #ripped from the re documentation
