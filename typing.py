@@ -5,10 +5,6 @@
 #simple wrapper to avoid case-sensitivity
 #and help ensure everything is read-only
 class CaseInsensitiveSet:
-	class NotFoundException(Exception):
-		def __init__(self, item):
-			super().__init__(str(item) + " not found")
-	
 	def __init__(self, names):
 		self._SET = frozenset({name.upper() for name in names})
 	
