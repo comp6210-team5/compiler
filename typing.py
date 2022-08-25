@@ -36,7 +36,10 @@ class CaseInsensitiveSet:
 		for name in self._SET:
 			yield name
 	
-	
+	#keep in mind this is never a greedy match
+	#if one value is a subset of another,
+	#the larger value is never matched
+	#hopefully shouldn't be an issue
 	def regex(self):
 		reg = str()
 		for val in self._SET:
@@ -44,8 +47,6 @@ class CaseInsensitiveSet:
 				reg = reg + '\\'
 			reg = reg + rf'{val}|'
 		return '(' + reg[:-1] + ')'
-	
-		
 	
 	@classmethod
 	def union(cls, *others):
