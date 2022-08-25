@@ -36,13 +36,9 @@ class CaseInsensitiveSet:
 		for name in self._SET:
 			yield name
 	
-	#keep in mind this is never a greedy match
-	#if one value is a subset of another,
-	#the larger value is never matched
-	#hopefully shouldn't be an issue
 	def regex(self):
 		reg = str()
-		for val in self._SET:
+		for val in sorted(self._SET, key=lambda x: -len(x)):
 			if val in _REGEX_ESCAPES:
 				reg = reg + '\\'
 			reg = reg + rf'{val}|'
@@ -82,8 +78,6 @@ ONECHAR_OPERATORS = CaseInsensitiveSet({
 	'\\'
 })
 
-print(ONECHAR_OPERATORS.regex())
-
 TWOCHAR_OPERATORS = CaseInsensitiveSet({
 	'!=',
 	'==',
@@ -96,6 +90,8 @@ TWOCHAR_OPERATORS = CaseInsensitiveSet({
 })
 
 ALL_OPERATORS = CaseInsensitiveSet.union(ONECHAR_OPERATORS, TWOCHAR_OPERATORS)
+
+print(ALL_OPERATORS.regex())
 
 TYPES = CaseInsensitiveSet({
 	'OPERATOR',
