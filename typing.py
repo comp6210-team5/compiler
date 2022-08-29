@@ -39,10 +39,12 @@ class CaseInsensitiveSet:
 	def regex(self):
 		reg = str()
 		for val in sorted(self._SET, key=lambda x: -len(x)):
-			if val in _REGEX_ESCAPES:
-				reg = reg + '\\'
-			reg = reg + rf'{val}|'
-		return '(' + reg[:-1] + ')'
+			for char in val:
+				if char in _REGEX_ESCAPES:
+					reg = reg + '\\'
+				reg = reg + rf'{char}'
+			reg = reg + '|'
+		return '(?i:' + reg[:-1] + ')'
 	
 	@classmethod
 	def union(cls, *others):
@@ -61,7 +63,7 @@ KEYWORDS = CaseInsensitiveSet({
 })
 
 #Segregate operators by length, to make it easy to set precedence in the lexer
-ONECHAR_SYMBOLS = CaseInsensitiveSet({
+ONECHAR_OPERATORS = CaseInsensitiveSet({
 	';',
 	':',
 	'?',
@@ -78,10 +80,12 @@ ONECHAR_SYMBOLS = CaseInsensitiveSet({
 	'[',
 	']',
 	'^',
+	'(',
+	')',
 	'\\'
 })
 
-TWOCHAR_SYMBOLS = CaseInsensitiveSet({
+TWOCHAR_OPERATORS = CaseInsensitiveSet({
 	'!=',
 	'==',
 	'<=',
@@ -92,7 +96,8 @@ TWOCHAR_SYMBOLS = CaseInsensitiveSet({
 	'--'
 })
 
-ALL_SYMBOLS = CaseInsensitiveSet.union(KEYWORDS, ONECHAR_SYMBOLS, TWOCHAR_SYMBOLS)
+ALL_OPERATORS = CaseInsensitiveSet.union(ONECHAR_OPERATORS, TWOCHAR_OPERATORS)
+ALL_SYMBOLS = CaseInsensitiveSet.union(KEYWORDS, ALL_OPERATORS)
 
 TYPES = CaseInsensitiveSet({
 	'OPERATOR',
@@ -107,7 +112,7 @@ def typename(text):
 		return 'OPERATOR'
 	elif text in KEYWORDS:
 		return 'KEYWORD'
-	elif text[0] == '"' and text[-1] == '"':
+	elif len(text) > 1 and text[0] == '"' and text[-1] == '"':
 		return 'STRING'
 	elif text.isdigit():
 		return 'NUMBER'
