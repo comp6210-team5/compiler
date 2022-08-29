@@ -39,6 +39,7 @@ def tokenize(source, args):
 		pos = match.end()
 		line, col = linecol(source, pos)
 		tokens.append(Token(match[0], line, col))
+	return tokens
 		
 
 #for now we will determine line and col
