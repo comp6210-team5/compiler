@@ -61,7 +61,7 @@ KEYWORDS = CaseInsensitiveSet({
 })
 
 #Segregate operators by length, to make it easy to set precedence in the lexer
-ONECHAR_OPERATORS = CaseInsensitiveSet({
+ONECHAR_SYMBOLS = CaseInsensitiveSet({
 	';',
 	':',
 	'?',
@@ -81,7 +81,7 @@ ONECHAR_OPERATORS = CaseInsensitiveSet({
 	'\\'
 })
 
-TWOCHAR_OPERATORS = CaseInsensitiveSet({
+TWOCHAR_SYMBOLS = CaseInsensitiveSet({
 	'!=',
 	'==',
 	'<=',
@@ -92,9 +92,7 @@ TWOCHAR_OPERATORS = CaseInsensitiveSet({
 	'--'
 })
 
-ALL_OPERATORS = CaseInsensitiveSet.union(ONECHAR_OPERATORS, TWOCHAR_OPERATORS)
-
-ALL_SYMBOLS = CaseInsensitiveSet.union(KEYWORDS, ALL_OPERATORS)
+ALL_SYMBOLS = CaseInsensitiveSet.union(KEYWORDS, ONECHAR_SYMBOLS, TWOCHAR_SYMBOLS)
 
 TYPES = CaseInsensitiveSet({
 	'OPERATOR',
