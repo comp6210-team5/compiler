@@ -82,6 +82,9 @@ ONECHAR_OPERATORS = CaseInsensitiveSet({
 	'^',
 	'(',
 	')',
+	',',
+	'{',
+	'}',
 	'\\'
 })
 
