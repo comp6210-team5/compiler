@@ -1,0 +1,108 @@
+\documentclass{article}
+\input{header}
+
+% https://ctan.org/pkg/syntax-mdw
+% provides grammar environment for CFG typesetting
+\usepackage{syntax}
+\setlength{\grammarparsep}{2pt}
+\def\lrep{\synshortsoff\texttt{\{}\synshorts~}
+\def\rrep{\synshortsoff\texttt{\}}\synshorts~}
+\def\lopt{\synshortsoff\texttt{[}\synshorts~}
+\def\ropt{\synshortsoff\texttt{]}\synshorts~}
+\def\lgrp{\synshortsoff\texttt{(}\synshorts~}
+\def\rgrp{\synshortsoff\texttt{)}\synshorts~}
+\usepackage{hyperref}
+
+\title{The C Programming Language Specification}
+
+\begin{document}
+\maketitle
+
+\section*{Notation}
+The syntax is specified using a variant of Extended Backus-Naur Form (EBNF) defined in the \href{https://go.dev/ref/spec#Notation}{Go Programming Language Specification}:
+\begin{grammar}
+  <Syntax> ::= \lrep <Production> \rrep .
+  
+  <Production> ::= `<' "production_name" `>' `::=' \lopt <Expression> \ropt `.' .
+  
+  <Expression> ::= <Term> \lrep `|' <Term> \rrep .
+  
+  <Term> ::= <Factor> \lrep <Factor> \rrep .
+  
+  <Factor> ::= "production_name" | "token" \lopt `\ldots' "token" \ropt | <Group> | <Option> | <Repetition> .
+  
+  <Group> ::= `(' <Expression> `)' .
+  
+  <Option> ::= `[' <Expression> `]' .
+  
+  <Repetition> ::= `{' <Expression> `}' .
+
+  <Test> ::= \lgrp <Expression> \rgrp .
+  
+\end{grammar}
+% TODO: explain
+\section*{Source code representation}
+Source code must be plain ASCII text. Additionally, of the ASCII
+characters, only the following belonging to these categories may
+appear in the source text:
+\begin{grammar}
+  <newline> ::= "the ASCII code 10 (0x0a)" .
+
+  <white_space> ::= \lgrp <new_line> | "the ASCII code 32 (0x20)" | "the ASCII code 13 (0x0d)" \rgrp \lrep <new_line> | "the ASCII code 32 (0x20)" | "the ASCII code 13 (0x0d)" \rrep .
+
+  <letter> ::= 'A' \ldots 'Z' | 'a' \ldots 'z' | '_' .
+
+  <decimal_digit> ::= '0' \ldots '9' .
+
+  <binary_digit> ::= '0' | '1' .
+
+  <octal_digit> ::= '0' \ldots '7' .
+
+  <hex_digit> ::= '0' \ldots '9' | 'A' \ldots 'F' | 'a' \ldots 'f' .
+  
+\end{grammar}
+Note that this disallows most control characters, the NUL character,
+and any extended ASCII characters (above 127). Arbitrary bytes may be
+represented in strings using various escape sequences. %TODO: described later
+\section*{Lexical elements}
+\subsection*{Comments}
+Comments are ignored by the compiler and may come in two forms: (1)
+single-line comments beginning with
+\texttt{\textbackslash\textbackslash} and (2) multi-line comments
+beginning with \texttt{\textbackslash*} and terminated with
+\texttt{*\textbackslash}.
+
+Note that the compiler identifies and treats these separately from
+tokens (i.e. they are ignored rather than tokenized), since they don't
+have impact on program meaning/form.
+
+\subsection*{Tokens}
+There are five classes of tokens recognized by the compiler:
+\emph{identifiers}, \emph{keywords}, \emph{operators},
+\emph{punctuation}, and \emph{literals}. \emph{white\_space} is
+ignored except as it separates tokens, in which case one or more
+``white space'' characters are essentially compressed into one white
+space rule noted in the character categories above. A token in the
+source code consists of the longest sequence of characters which match
+its definition (i.e. the lexer is greedy).
+
+% TODO: for now we separate operators and punctuation, but should we? Does it matter? My thinking is that having finer token types aids parsing, but even then we'll have to parse to specific characters, rather than arbitrary token classes, most of the time. Example parse logic: "if the next token is a '}', then this is a correct block. if not, error."
+
+\subsection*{Identifiers}
+\begin{grammar}
+  <identifier> ::= <letter> \lrep <letter> | <digit> \rrep
+\end{grammar}
+
+\subsection*{Keywords}
+
+\subsection*{Operators}
+
+\subsection*{Punctuation}
+
+\subsection*{Literals}
+\subsubsection*{Integer literals}
+\subsubsection*{Floating-point literals}
+To be implemented?
+\subsubsection*{Character literals}
+\subsubsection*{String literals}
+\end{document}
