@@ -1,1 +1,8 @@
 __pycache__/*
+
+*~
+% pdflatex stuff.
+*.log
+*.aux
+*.out
+*.pdf
