@@ -35,7 +35,7 @@ def tokenize(source, args):
 	
 	pos = 0
 	tokens = []
-	while match := re.search(source, pos):
+	while match := reg.search(source, pos):
 		pos = match.end()
 		line, col = linecol(source, pos)
 		tokens.append(Token(match[0], line, col))
