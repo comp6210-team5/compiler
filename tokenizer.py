@@ -8,6 +8,17 @@ class Token:
 		self.line = line
 		self.col = col
 		self.typename = tp.typename(text)
-		
+
 def tokenize(source, args):
-	pass
+	#Reference: \d is for decimal numbers,
+	#[\d']+ matches 1 or more decimal numbers and ticks,
+	#\. matches a period,
+	#[\d']* matches any number of decimal numbers and ticks
+	#(...)? matches the parens 0 or 1 times
+	numbers = r"[\d']+(\.[\d']*)?"
+	
+	#(?m\\$)? matches 0 or 1 instances of a
+	#backslash followed by a line break
+	strings = r'"(.*(?m\\$)?)+"'
+	
+	symbols = f'{strings}|{numbers}|' + tp.ALL_SYMBOLS.regex()
