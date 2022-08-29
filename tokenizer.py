@@ -17,8 +17,14 @@ def tokenize(source, args):
 	#(...)? matches the parens 0 or 1 times
 	numbers = r"[\d']+(\.[\d']*)?"
 	
-	#(?m\\$)? matches 0 or 1 instances of a
+	#(\\\n)? matches 0 or 1 instances of a
 	#backslash followed by a line break
-	strings = r'"(.*(?m\\$)?)+"'
+	strings = r'"(.*(\\\n)?)+"'
 	
-	symbols = f'{strings}|{numbers}|' + tp.ALL_SYMBOLS.regex()
+	comment = r'//(?m.*$)'
+	
+	multicomment = r'/\*(.*\n?)*\*/'
+	
+	symbols = re.compile(f'{comment}|{multicomment}|{strings}|{numbers}|' \
+											+ tp.ALL_SYMBOLS.regex())
+	
