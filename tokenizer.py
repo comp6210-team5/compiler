@@ -39,7 +39,7 @@ def tokenize(source):
 	identifier = r'[a-zA-Z_][\w_]*'
 	
 	reg = re.compile(rf'({multicomment}|{comment}|{strings}|{numbers}|' \
-									+ tp.ALL_SYMBOLS.regex() + rf'|{identifier}|\s+)')
+						+ tp.ALL_SYMBOLS.regex() + rf'|{identifier}|\s+)')
 	whitespace = re.compile(r'\s+')
 	
 	pos = 0
