@@ -14,7 +14,7 @@ def tokenize(source, args):
 	#[\d']* matches 0 or more decimal numbers and ticks
 	decimals = r"\d+[\d']*"
 	
-	#\.{decimals})? matches 0 or 1 instances of a
+	#(\.{decimals})? matches 0 or 1 instances of a
 	#period followed by more decimals
 	numbers = rf'{decimals}(\.{decimals})?'
 	
