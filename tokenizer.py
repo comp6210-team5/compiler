@@ -31,7 +31,7 @@ def tokenize(source, args):
 	multicomment = r'/\*(?m.*)*?\*/'
 	
 	reg = re.compile(rf'{multicomment}|{comment}|{strings}|{numbers}|' \
-									+ tp.ALL_SYMBOLS.regex()) + r'|\n'
+									+ tp.ALL_SYMBOLS.regex() + r'|\n')
 	
 	pos = 0
 	tokens = []
