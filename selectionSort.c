@@ -1,6 +1,6 @@
 #include <stdio.h>
 
-void switch(int *curr, int *next) {
+void swap(int *curr, int *next) {
 	int temp = *curr;
 	*curr = *next;
 	*next = temp;
@@ -15,7 +15,7 @@ void selectionSort(int arr[], int n) {
 			if (arr[j] < arr[min])
 				min = j;
 			if (min != i) 
-				switch(&arr[min], &arr[i]);
+				swap(&arr[min], &arr[i]);
 	}
 }
 
