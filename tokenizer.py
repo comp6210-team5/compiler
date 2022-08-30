@@ -1,48 +1,14 @@
 import argparse
-import re
-import typing as tp
-
-class Token:
-	def __init__(self, text, line, col):
-		self.value = text
-		self.line = line
-		self.col = col
-		self.typename = tp.typename(text)
-	
-	def __str__(self):
-		return self.value
+from token import *
 
 def tokenize(source):
-	#\d+ matches 1 or more decimal numbers,
-	#[\d']* matches 0 or more decimal numbers and ticks
-	decimals = r"\d+[\d']*"
+	reg = re.compile(rf'({multicomment}|{comment}|{preprocessor}'\
+						+ rf'|{string}|{number}|'\
+						+ ALL_SYMBOLS.regexstring\
+						+ rf'|{identifier}|\s+)')
 	
-	#(\.{decimals})? matches 0 or 1 instances of a
-	#period followed by more decimals
-	numbers = rf'{decimals}(\.{decimals})?'
-	
-	#[^"]* matches any characters except "
-	#(\\\n)? matches 0 or 1 instances of a
-	#backslash followed by a line break
-	strings = r'"([^"]*(\\\n)?)+"'
-	
-	#.*? does not match linebreaks, is minimal
-	#(?m:$) matches end-of-line
-	comment = r'//.*?(?m:$)'
-	
-	#(?m.*)*? matches any characters, including linebreaks,
-	#matching a minimal number (so until the first */)
-	multicomment = r'/\*(?m:.*)*?\*/'
-	
-	#alphabet character or underscore followed by
-	#any number of alphanumerics or underscores
-	identifier = r'[a-zA-Z_][a-zA-Z0-9_]*'
-	
-	reg = re.compile(rf'({multicomment}|{comment}|{strings}|{numbers}|' \
-						+ tp.ALL_SYMBOLS.regex() + rf'|{identifier}|\s+)')
-	
-	#comment or whitespace
-	ignore = re.compile(rf'({multicomment}|{comment}|\s+)')
+	#not tokens
+	ignore = re.compile(rf'({multicomment}|{comment}|{preprocessor}|\s+)')
 	
 	pos = 0
 	tokens = []
@@ -64,6 +30,7 @@ def linecol(source, pos):
 	col = len(lines[-1]) + 1
 	return line, col
 
+#test code
 with open('selectionSort.c', 'r') as file:
 	for token in tokenize(file.read()):
 		print(token)
