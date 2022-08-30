@@ -144,15 +144,15 @@ class Token:
 		self.line = line
 		self.col = col
 		
-		if number_comp.match(text):
+		if number_comp.fullmatch(text):
 			self.typename = 'NUMBER'
-		elif string_comp.match(text):
+		elif string_comp.fullmatch(text):
 			self.typename = 'STRING'
-		elif ALL_OPERATORS.regexcomp.match(text):
+		elif ALL_OPERATORS.regexcomp.fullmatch(text):
 			self.typename = 'OPERATOR'
-		elif KEYWORDS.regexcomp.match(text):
+		elif KEYWORDS.regexcomp.fullmatch(text):
 			self.typename = 'KEYWORD'
-		elif identifier_comp.match(text):
+		elif identifier_comp.fullmatch(text):
 			self.typename = 'ID'
 		else:
 			raise "can't deduce token type"
