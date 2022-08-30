@@ -111,18 +111,18 @@ decimal = r"\d+[\d']*"
 #(\.{decimals})? matches 0 or 1 instances of a
 #period followed by more decimals
 number = rf'{decimal}(\.{decimal})?'
-_number_comp = re.compile(number)
+number_comp = re.compile(number)
 
 #[^"]* matches any characters except "
 #(\\\n)? matches 0 or 1 instances of a
 #backslash followed by a line break
 string = r'"([^"]*(\\\n)?)+"'
-_string_comp = re.compile(string)
+string_comp = re.compile(string)
 
 #alphabet character or underscore followed by
 #any number of alphanumerics or underscores
 identifier = r'[a-zA-Z_][a-zA-Z0-9_]*'
-_identifier_comp = re.compile(identifier)
+identifier_comp = re.compile(identifier)
 
 #.*? does not match linebreaks, is minimal
 #(?m:$) matches end-of-line
@@ -141,15 +141,15 @@ class Token:
 		self.line = line
 		self.col = col
 		
-		if _number_comp.match(text):
+		if number_comp.match(text):
 			self.typename = 'NUMBER'
-		elif _string_comp.match(text):
+		elif string_comp.match(text):
 			self.typename = 'STRING'
 		elif ALL_OPERATORS.regexcomp.match(text):
 			self.typename = 'OPERATOR'
 		elif KEYWORDS.regexcomp.match(text):
 			self.typename = 'KEYWORD'
-		elif _identifier_comp.match(text):
+		elif identifier_comp.match(text):
 			self.typename = 'ID'
 		else:
 			raise "can't deduce token type"
