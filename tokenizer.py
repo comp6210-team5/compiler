@@ -28,7 +28,7 @@ def tokenize(source):
         octal_digits = r"[0-7]('?[0-7])*"
         octal_lit = rf"0(o|O)'?{octal_digits}"
         
-        integer_lit = rf"{decimal_lit}|{hex_lit}|{binary_lit}|{octal_lit}"
+        integer_lit = rf"({decimal_lit})|({hex_lit})|({binary_lit})|({octal_lit})"
 
         decimal_float_lit = rf"({decimal_digits}\.({decimal_digits})?)|(({decimal_digits})?\.{decimal_digits})"
 
