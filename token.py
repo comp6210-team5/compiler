@@ -115,10 +115,10 @@ hexadecimal = r'0x[0-9a-fA-F]+'
 number = rf'({decimal}(\.{decimal})?|{hexadecimal})'
 number_comp = re.compile(number)
 
-#[^"]* matches any characters except "
+#[^"] matches any characters except "
 #(\\\n)? matches 0 or 1 instances of a
 #backslash followed by a line break
-string = r'"([^"]*(\\\n)?)+"'
+string = r'"(([^"]|\\")*(\\\n)?)+"'
 string_comp = re.compile(string)
 
 #alphabet character or underscore followed by
