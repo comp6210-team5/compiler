@@ -4,7 +4,7 @@ from token import *
 def tokenize(source, print_tokens = False):
 	reg = re.compile(rf'({multicomment}|{comment}|{preprocessor}'\
 						+ rf'|{string}|{number}|'\
-						+ ALL_SYMBOLS.regexstring\
+						+ ALL_OPERATORS.regexstring\
 						+ rf'|{identifier}|\s+)')
 	
 	#not tokens
