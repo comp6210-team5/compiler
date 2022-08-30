@@ -36,7 +36,7 @@ def tokenize(source):
 	
 	#alphabet character or underscore followed by
 	#any number of alphanumerics or underscores
-	identifier = r'[a-zA-Z_][\w_]*'
+	identifier = r'[a-zA-Z_][a-zA-Z0-9_]*'
 	
 	reg = re.compile(rf'({multicomment}|{comment}|{strings}|{numbers}|' \
 						+ tp.ALL_SYMBOLS.regex() + rf'|{identifier}|\s+)')
