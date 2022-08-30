@@ -1,5 +1,5 @@
-#for definitions, classes, and functions
-#that all or most other files will import
+#this is its own file since presumably other modules will need
+#to understand how to use tokens, but not the tokenizer itself
 
 import re
 
