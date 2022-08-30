@@ -108,9 +108,11 @@ TYPES = frozenset({
 #followed by 0 or more decimal numbers and ticks
 decimal = r"[0-9][0-9']*"
 
+hexadecimal = r'0x[0-9a-fA-F]+'
+
 #(\.{decimals})? matches 0 or 1 instances of a
 #period followed by more decimals
-number = rf'{decimal}(\.{decimal})?'
+number = rf'({decimal}(\.{decimal})?|{hexadecimal})'
 number_comp = re.compile(number)
 
 #[^"]* matches any characters except "
