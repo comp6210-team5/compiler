@@ -36,33 +36,106 @@ def tokenize(source):
         hex_byte_value = r"\\x[0-9A-Fa-f]{2}"
         octal_byte_value = r"\\[0-7]{3}"
         byte_value = rf"({hex_byte_value})|({octal_byte_value})"
-        printable_ascii = r"""[ !"#$%&'()*+,\-./0-9:;<=>?@A-Z[\\\]^_`a-z{|}~]"""
-        ascii_value = rf"({printable_ascii})|({escaped_char})"
-        char_lit = rf"'(({ascii_value})|({byte_value}))'"
-        
-	#[^"]* matches any characters except "
-	#(\\\n)? matches 0 or 1 instances of a
-	#backslash followed by a line break
-	strings = r'"([^"]*(\\\n)?)+"'
-	
+        char_ascii = r'[ !"#$%&()*+,\-./0-9:;<=>?@A-Z[\]^_`a-z{|}~]'
+        char_ascii_value = rf"({char_ascii})|({escaped_char})"
+        char_lit = rf"'(({char_ascii_value})|({byte_value}))'"
+
+        string_ascii = r"[ !'#$%&()*+,\-./0-9:;<=>?@A-Z[\]^_`a-z{|}~]"
+        string_ascii_value = rf"({string_ascii})|({escaped_char})"
+        string_lit = rf'"(({string_ascii_value})|({byte_value}))*"'
+
+        literal = re.compile(rf"({string_lit})|({char_lit})|({decimal_float_lit})|({integer_lit})")
 	#.*? does not match linebreaks, is minimal
 	#(?m:$) matches end-of-line
-	comment = r'//.*?(?m:$)'
-	
-	#(?m.*)*? matches any characters, including linebreaks,
-	#matching a minimal number (so until the first */)
-	multicomment = r'/\*(?m:.*)*?\*/'
+	comment = re.compile(r'//.*?(?m:$)')
 	
 	#alphabet character or underscore followed by
 	#any number of alphanumerics or underscores
-	identifier = r'[a-zA-Z_][\w_]*'
+	identifier = re.compile(r'[a-zA-Z_][a-zA-Z0-9_]*')
+
+        # case-insensitive match of any of the given keywords
+        keywords = re.compile(r'(?i:if|else|return|switch|case|while|break|continue)')
+
+        ops_punc = re.compile(tp.ALL_OPERATORS.regex())
+
+        whitespace = set([' ', '\t'])
+        newline = '\n'
 	
 	reg = re.compile(rf'({multicomment}|{comment}|{strings}|{numbers}|' \
 						+ tp.ALL_SYMBOLS.regex() + rf'|{identifier}|\s+)')
-	whitespace = re.compile(r'\s+')
 	
 	pos = 0
+        lineno = 0
+        colno = 0
+        multicomment = False
 	tokens = []
+        while pos < len(source):
+                # skip newlines (considered whitespace) and adjust line/col counters
+                if source[pos] == newline:
+                        pos += 1
+                        lineno += 1
+                        colno = 0
+                        continue
+
+                # if inside a multi-line comment, look only for the terminating */
+                if multicomment:
+                        if source[pos] != '*':
+                                pos += 1
+                                colno += 1
+                                continue
+                        else if pos + 1 == len(source):
+                                # let this fall-through to error
+                                continue
+                        else if source[pos+1] != '/':
+                                pos += 2
+                                colno += 2
+                                continue
+                        else:
+                                pos += 2
+                                colno += 2
+                                multicomment = False
+                                continue
+                                
+                else:
+                        # skip whitespace
+                        if source[pos] in whitespace:
+                                pos += 1
+                                colno += 1
+                                continue
+                        # check for /* (this won't conflict with '/'
+                        # as an operator if it isn't followed by a
+                        # start)
+                        if source[pos] == '/' and pos + 1 < len(source) and source[pos+1] == '*':
+                                multicomment == True
+                                pos += 2
+                                colno += 2
+                                continue
+                        # TODO? skip over single-line comments in the same manner rather than using a regex
+                        
+                        # now we've skipped white-space and multi-line
+                        # comments and are looking at the first
+                        # character of the next potential token or
+                        # single-line comment or invalid
+
+                        # TODO: we must match keywords first, since
+                        # keywords are contained within the
+                        # identifiers rule, but matching keywords
+                        # first means we split identifiers that have
+                        # keywords as proper prefixes, which is a bug
+                        # I'm not sure how to handle
+                        match = keywords.match(source, pos)
+                        if match:
+                                pos = match.end()
+                                colno = match.end()
+                                
+
+                        
+        if multicomment:
+                # TODO: raise an error for EOF-terminated /*
+
+                        
+                
+                
 	while match := reg.search(source, pos):
 		pos = match.end()
 		if not whitespace.fullmatch(match[0]):
@@ -72,6 +145,10 @@ def tokenize(source):
 
 #for now we will determine line and col
 #by lazily reading as-needed
+# TODO: to allow for tracking line and column numbers, the only
+# regexes that span multiple lines are whitespace and multicomments,
+# which can both be handled on a character-by-character basis pretty
+# easily without using a regexy
 def linecol(source, pos):
 	if pos == 0:
 		return 0, 1
