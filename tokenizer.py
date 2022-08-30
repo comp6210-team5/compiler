@@ -13,14 +13,33 @@ class Token:
 		return self.value
 
 def tokenize(source):
-	#\d+ matches 1 or more decimal numbers,
-	#[\d']* matches 0 or more decimal numbers and ticks
-	decimals = r"\d+[\d']*"
-	
-	#(\.{decimals})? matches 0 or 1 instances of a
-	#period followed by more decimals
-	numbers = rf'{decimals}(\.{decimals})?'
-	
+
+        #\d matches 0...9
+        #('?\d)* matches 0 or more decimal numbers separated by an optional tick
+        decimal_digits = r"\d('?\d)*"
+        decimal_lit = rf"\d('?{decimal_digits})?"
+        
+        hex_digits = r"[0-9a-fA-F]('?[0-9a-fA-F])*"
+        hex_lit = rf"0(x|X)'?{hex_digits}"
+
+        binary_digits = r"(0|1)('?(0|1))*"
+        binary_lit = rf"0(b|B)'?{binary_digits}"
+
+        octal_digits = r"[0-7]('?[0-7])*"
+        octal_lit = rf"0(o|O)'?{octal_digits}"
+        
+        integer_lit = rf"{decimal_lit}|{hex_lit}|{binary_lit}|{octal_lit}"
+
+        decimal_float_lit = rf"({decimal_digits}\.({decimal_digits})?)|(({decimal_digits})?\.{decimal_digits})"
+
+        escaped_char = r"""\\[abefnrtv\\'"]"""
+        hex_byte_value = r"\\x[0-9A-Fa-f]{2}"
+        octal_byte_value = r"\\[0-7]{3}"
+        byte_value = rf"({hex_byte_value})|({octal_byte_value})"
+        printable_ascii = r"""[ !"#$%&'()*+,\-./0-9:;<=>?@A-Z[\\\]^_`a-z{|}~]"""
+        ascii_value = rf"({printable_ascii})|({escaped_char})"
+        char_lit = rf"'(({ascii_value})|({byte_value}))'"
+        
 	#[^"]* matches any characters except "
 	#(\\\n)? matches 0 or 1 instances of a
 	#backslash followed by a line break

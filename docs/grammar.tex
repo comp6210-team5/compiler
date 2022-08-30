@@ -59,6 +59,8 @@ appear in the source text:
   <octal_digit> ::= '0' \ldots '7' .
 
   <hex_digit> ::= '0' \ldots '9' | 'A' \ldots 'F' | 'a' \ldots 'f' .
+
+  <printable_ascii> ::= "the ASCII code 32 (0x20)" \ldots "the ASCII code 126 (0x7e)" .
   
 \end{grammar}
 Note that this disallows most control characters, the NUL character,
@@ -77,16 +79,14 @@ tokens (i.e. they are ignored rather than tokenized), since they don't
 have impact on program meaning/form.
 
 \subsection*{Tokens}
-There are five classes of tokens recognized by the compiler:
-\emph{identifiers}, \emph{keywords}, \emph{operators},
-\emph{punctuation}, and \emph{literals}. \emph{white\_space} is
-ignored except as it separates tokens, in which case one or more
-``white space'' characters are essentially compressed into one white
-space rule noted in the character categories above. A token in the
-source code consists of the longest sequence of characters which match
-its definition (i.e. the lexer is greedy).
-
-% TODO: for now we separate operators and punctuation, but should we? Does it matter? My thinking is that having finer token types aids parsing, but even then we'll have to parse to specific characters, rather than arbitrary token classes, most of the time. Example parse logic: "if the next token is a '}', then this is a correct block. if not, error."
+There are four classes of tokens recognized by the compiler:
+\emph{identifiers}, \emph{keywords}, \emph{operators \& punctuation},
+and \emph{literals}. \emph{white\_space} is ignored except as it
+separates tokens, in which case one or more ``white space'' characters
+are essentially compressed into one white space rule noted in the
+character categories above. A token in the source code consists of the
+longest sequence of characters which match its definition (i.e. the
+lexer is greedy).
 
 \subsection*{Identifiers}
 \begin{grammar}
@@ -94,15 +94,69 @@ its definition (i.e. the lexer is greedy).
 \end{grammar}
 
 \subsection*{Keywords}
+Keywords are any of the following (case-insensitive):
+\begin{verbatim}
+if, else, return, switch, case, while, break, continue
+\end{verbatim}
 
-\subsection*{Operators}
-
-\subsection*{Punctuation}
+\subsection*{Operators \& Punctuation}
+The following are recognized as either operators or punctuation:
+% TODO: is '?' a valid operator in C?
+% TODO: and '\', is that for line-breaks?
+\begin{verbatim}
+;, :, ?, +, -, /, *, <, >, =, !, &, |, [, ], ^, (, ), ,, {, }, \, !=, ==, <=, &&, ||, ++, --
+\end{verbatim}
 
 \subsection*{Literals}
 \subsubsection*{Integer literals}
+\begin{grammar}
+  <integer_lit> ::= <decimal_lit> | <hex_lit> | <binary_lit> | <octal_lit> .
+
+  <decimal_lit> ::= \lgrp `0' \ldots `9' \rgrp \lopt \lopt `\'' \ropt <decimal_digits> \ropt .
+
+  <hex_lit> ::= `0' \lgrp `x' | `X' \rgrp \lopt `\'' \ropt <hex_digits> .
+
+  <binary_lit> ::= `0' \lgrp `b' | `B' \rgrp \lopt `\'' \ropt <binary_digits> .
+
+  <octal_lit> ::= `0' \lgrp `o' | `O' \rgrp \lopt `\'' \ropt <octal_digits> .
+
+  <decimal_digits> ::= <decimal_digit> \lrep \lopt `\'' \ropt <decimal_digit> \rrep .
+
+  <hex_digits> ::= <hex_digit> \lrep \lopt `\'' \ropt <hex_digit> \rrep .
+
+  <binary_digits> ::= <binary_digit> \lrep \lopt `\'' \ropt <binary_digit> \rrep .
+
+  <octal_digits> ::= <octal_digit> \lrep \lopt `\'' \ropt <octal_digit> \rrep .
+\end{grammar}
+
+For readability, a single \texttt{\'} character may appear after a base prefix or between successive digits.
+
 \subsubsection*{Floating-point literals}
-To be implemented?
+\begin{grammar}
+  <float_lit> ::= <decimal_float_lit> . %TODO: add hex float literals
+
+  <decimal_float_lit> ::= <decimal_digits> `.' \lopt <decimal_digits> \ropt
+  \alt \lopt <decimal_digits> \ropt `.' <decimal_digits> .
+
+  %TODO: add exponentials
+\end{grammar}
+
 \subsubsection*{Character literals}
+\begin{grammar}
+  <char_lit> ::= `\'' \lgrp <ascii_value> | <byte_value> \rgrp `\'' .
+
+  <ascii_value> ::= <printable_ascii> | <escaped_char> .
+
+  <byte_value> ::= <octal_byte_value> | <hex_byte_value> .
+
+  <octal_byte_value> ::= `\textbackslash' <octal_digit> <octal_digit> <octal_digit> .
+
+  <hex_byte_value> ::= `\textbackslash x' <hex_digit> <hex_digit> .
+
+  % https://en.wikipedia.org/wiki/Escape_sequences_in_C
+  % except '?' because I don't know what trigraphs are
+  <escaped_char> ::= `\textbackslash' \lgrp `a' | `b' | `e' | `f' | `n' | `r' | `t' | `v' | `\textbackslash' | `\'' | `\"' \rgrp .
+\end{grammar}
+
 \subsubsection*{String literals}
 \end{document}
