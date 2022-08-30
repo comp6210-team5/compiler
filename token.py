@@ -104,9 +104,9 @@ TYPES = frozenset({
 	'ID'
 })
 
-#\d+ matches 1 or more decimal numbers,
-#[\d']* matches 0 or more decimal numbers and ticks
-decimal = r"\d+[\d']*"
+#matches 1 decimal number,
+#followed by 0 or more decimal numbers and ticks
+decimal = r"[0-9][0-9']*"
 
 #(\.{decimals})? matches 0 or 1 instances of a
 #period followed by more decimals
