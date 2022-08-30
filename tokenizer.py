@@ -40,13 +40,15 @@ def tokenize(source):
 	
 	reg = re.compile(rf'({multicomment}|{comment}|{strings}|{numbers}|' \
 						+ tp.ALL_SYMBOLS.regex() + rf'|{identifier}|\s+)')
-	whitespace = re.compile(r'\s+')
+	
+	#comment or whitespace
+	ignore = re.compile(rf'({multicomment}|{comment}|\s+)')
 	
 	pos = 0
 	tokens = []
 	while match := reg.search(source, pos):
 		pos = match.end()
-		if not whitespace.fullmatch(match[0]):
+		if not ignore.fullmatch(match[0]):
 			line, col = linecol(source, pos)
 			tokens.append(Token(match[0], line, col))
 	return tokens
