@@ -1,7 +1,7 @@
 import argparse
 from token import *
 
-def tokenize(source):
+def tokenize(source, print_tokens = False):
 	reg = re.compile(rf'({multicomment}|{comment}|{preprocessor}'\
 						+ rf'|{string}|{number}|'\
 						+ ALL_SYMBOLS.regexstring\
@@ -17,6 +17,9 @@ def tokenize(source):
 		if not ignore.fullmatch(match[0]):
 			line, col = linecol(source, pos)
 			tokens.append(Token(match[0], line, col))
+	
+	if print_tokens:
+		print(token for token in tokens)
 	return tokens
 
 #for now we will determine line and col

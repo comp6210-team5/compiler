@@ -79,6 +79,7 @@ ONECHAR_OPERATORS = RegexSet({
 	',',
 	'{',
 	'}',
+	'.',
 	'\\'
 })
 
@@ -118,7 +119,7 @@ number_comp = re.compile(number)
 #[^"] matches any characters except "
 #(\\\n)? matches 0 or 1 instances of a
 #backslash followed by a line break
-string = r'"(([^"]|\\")*(\\\n)?)+"'
+string = r'"(([^"]|\\")*(?m:\\$)?)+"'
 string_comp = re.compile(string)
 
 #alphabet character or underscore followed by
