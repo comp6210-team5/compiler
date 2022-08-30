@@ -143,9 +143,12 @@ For readability, a single \texttt{\'} character may appear after a base prefix o
 
 \subsubsection*{Character literals}
 \begin{grammar}
-  <char_lit> ::= `\'' \lgrp <ascii_value> | <byte_value> \rgrp `\'' .
+  <char_lit> ::= `\'' \lgrp <char_ascii_value> | <byte_value> \rgrp `\'' .
 
-  <ascii_value> ::= <printable_ascii> | <escaped_char> .
+  <char_ascii_value> ::= <char_ascii> | <escaped_char> .
+
+  % TODO: define an exception syntax in notation
+  <char_ascii> ::= <printable_ascii> "\textbf{except}" \lgrp `\textbackslash' | `\'' \rgrp .
 
   <byte_value> ::= <octal_byte_value> | <hex_byte_value> .
 
@@ -159,4 +162,12 @@ For readability, a single \texttt{\'} character may appear after a base prefix o
 \end{grammar}
 
 \subsubsection*{String literals}
+\begin{grammar}
+  <string_lit> ::= `\"' \lrep <string_ascii_value> | <byte_value> \rrep `\"' .
+
+  <string_ascii_value> ::= <string_ascii> | <escaped_char> .
+
+  <string_ascii> ::= <printable_ascii> "\textbf{except}" \lgrp `\textbackslash' | `\"' \rgrp .
+\end{grammar}
+
 \end{document}
