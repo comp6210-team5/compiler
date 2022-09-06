@@ -143,6 +143,29 @@ def tokenize(source):
 			tokens.append(Token(match[0], line, col))
 	return tokens
 
+# build a look-up table mapping every position in the source code to its line
+# and column number, this avoids having to do an O(n) search for each individual
+# position that delimits a token at the cost of memory and redundant storage
+# (inter-token positions aren't referenced)
+#
+# this is still just as lazy but not as slow
+def linecols(source):
+        positions = {}
+        i = 0
+        for j, line in enumerate(source.split('\n')):
+                for k in range(line):
+                        positions[i] = (j, k)
+                        i += 1
+                # n.b. thus far we've omitted the "\n" character as having any
+                # position in the source text, yet the count returned from match
+                # will include any "\n" characters, causing us to look-up an
+                # offset position as we go through the source-text, so include
+                # the newline character (or EOF) as the last character on the
+                # column
+                positions[i] = (j, len(line))
+                i += 1
+        return positions
+                
 #for now we will determine line and col
 #by lazily reading as-needed
 # TODO: to allow for tracking line and column numbers, the only
