@@ -48,6 +48,8 @@ appear in the source text:
 \begin{grammar}
   <newline> ::= "the ASCII code 10 (0x0a)" .
 
+  % TODO: whitespace is the python regex '\s' rather than just spaces, tabs, and
+  % newlines
   <white_space> ::= \lgrp <new_line> | "the ASCII code 32 (0x20)" | "the ASCII code 13 (0x0d)" \rgrp \lrep <new_line> | "the ASCII code 32 (0x20)" | "the ASCII code 13 (0x0d)" \rrep .
 
   <letter> ::= 'A' \ldots 'Z' | 'a' \ldots 'z' | '_' .
@@ -94,7 +96,7 @@ lexer is greedy).
 \end{grammar}
 
 \subsection*{Keywords}
-Keywords are any of the following (case-insensitive):
+Keywords are any of the following:
 \begin{verbatim}
 if, else, return, switch, case, while, break, continue
 \end{verbatim}
