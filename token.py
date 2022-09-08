@@ -118,7 +118,7 @@ binary_lit = rf"0(b|B)'?{binary_digits}"
 
 octal_digits = r"[0-7]('?[0-7])*"
 octal_lit = rf"0(o|O)'?{octal_digits}"
-        
+	
 integer_lit = rf"({decimal_lit})|({hex_lit})|({binary_lit})|({octal_lit})"
 
 # matches decimal digits followed by a period followed by optional decimal
@@ -159,7 +159,7 @@ comment = r'//.*?(?m:$)'
 
 #(?m.*)*? matches any characters, including linebreaks,
 #matching a minimal number (so until the first */)
-multicomment = r'/\*(?m:.*)*?\*/'
+multicomment = r'/\*(.*|\n)*?\*/'
 
 #not supported yet
 preprocessor = r'#.*?(?m:$)'
@@ -170,8 +170,8 @@ class Token:
 		self.line = line
 		self.col = col
 
-                if literal_comp.fullmatch(text):
-                        self.typename = 'LITERAL'
+		if literal_comp.fullmatch(text):
+			self.typename = 'LITERAL'
 		elif ALL_OPERATORS.regexcomp.fullmatch(text):
 			self.typename = 'OPERATOR'
 		elif KEYWORDS.regexcomp.fullmatch(text):
@@ -179,7 +179,9 @@ class Token:
 		elif identifier_comp.fullmatch(text):
 			self.typename = 'ID'
 		else:
-			raise "can't deduce token type"
+			# need some typename attribute even for unrecognized
+			# tokens
+			self.typename = 'INVALID'
 	
 	def __str__(self):
 		return self.value
