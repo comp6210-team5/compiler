@@ -2,26 +2,29 @@ import argparse
 from token import *
 
 def tokenize(source, print_tokens = False):
-	reg = re.compile(rf'({multicomment}|{comment}|{preprocessor}'\
-						+ rf'|{string}|{number}|'\
+	reg = re.compile(rf'(({multicomment})|({comment})|({preprocessor})'\
+						+ rf'|({literal})|('\
 						+ ALL_OPERATORS.regexstring\
-						+ rf'|{identifier}|\s+)')
+						+ rf')|({identifier})|\s+)')
 	
 	#not tokens
-	ignore = re.compile(rf'({multicomment}|{comment}|{preprocessor}|\s+)')
-	
+	ignore = re.compile(rf'(({multicomment})|({comment})|({preprocessor})|\s+)')			    
+
 	pos = 0
 	tokens = []
 	while match := reg.search(source, pos):
 		pos = match.end()
-		if not ignore.fullmatch(match[0]):
-			line, col = linecol(source, pos)
+		line, col = linecol(source, pos)
+		print(f"l:{line}, c:{col}")
+		if not ignore.fullmatch(match[0]):			  
 			tokens.append(Token(match[0], line, col))
+
 	
 	if print_tokens:
-		print(token for token in tokens)
+		print('\n'.join(f"{token.typename} l:{token.line} c:{token.col} --- {token}" for token in tokens))
 	return tokens
 
+		
 #for now we will determine line and col
 #by lazily reading as-needed
 def linecol(source, pos):
@@ -33,7 +36,4 @@ def linecol(source, pos):
 	col = len(lines[-1]) + 1
 	return line, col
 
-#test code
-with open('selectionSort.c', 'r') as file:
-	for token in tokenize(file.read()):
-		print(token)
+

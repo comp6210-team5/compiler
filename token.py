@@ -105,22 +105,48 @@ TYPES = frozenset({
 	'ID'
 })
 
-#matches 1 decimal number,
-#followed by 0 or more decimal numbers and ticks
-decimal = r"[0-9][0-9']*"
 
-hexadecimal = r'0x[0-9a-fA-F]+'
+#matches 0 or more decimal numbers separated by an optional, single tick
+decimal_digits = r"[0-9]('?[0-9])*"
+decimal_lit = rf"[0-9]('?{decimal_digits})?"
 
-#(\.{decimals})? matches 0 or 1 instances of a
-#period followed by more decimals
-number = rf'({decimal}(\.{decimal})?|{hexadecimal})'
-number_comp = re.compile(number)
+hex_digits = r"[0-9a-fA-F]('?[0-9a-fA-F])*"
+hex_lit = rf"0(x|X)'?{hex_digits}"
 
-#[^"] matches any characters except "
-#(\\\n)? matches 0 or 1 instances of a
-#backslash followed by a line break
-string = r'"(([^"]|\\")*(?m:\\$)?)+"'
-string_comp = re.compile(string)
+binary_digits = r"(0|1)('?(0|1))*"
+binary_lit = rf"0(b|B)'?{binary_digits}"
+
+octal_digits = r"[0-7]('?[0-7])*"
+octal_lit = rf"0(o|O)'?{octal_digits}"
+	
+integer_lit = rf"({decimal_lit})|({hex_lit})|({binary_lit})|({octal_lit})"
+
+# matches decimal digits followed by a period followed by optional decimal
+# digits, or optional decimal digits followed by a period followed by decimal
+# digits.
+decimal_float_lit = rf"({decimal_digits}\.({decimal_digits})?)|(({decimal_digits})?\.{decimal_digits})"
+
+# TODO: do we want a number literal to join all of the individual decimal
+# literals? Or do we want to join all literals (numbers and strings) into a
+# single token type?
+
+escaped_char = r"""\\[abefnrtv\\'"]"""
+hex_byte_value = r"\\x[0-9A-Fa-f]{2}"
+octal_byte_value = r"\\[0-7]{3}"
+byte_value = rf"({hex_byte_value})|({octal_byte_value})"
+char_ascii = r'[ !"#$%&()*+,\-./0-9:;<=>?@A-Z[\]^_`a-z{|}~]'
+char_ascii_value = rf"({char_ascii})|({escaped_char})"
+char_lit = rf"'(({char_ascii_value})|({byte_value}))'"
+
+string_ascii = r"[ !'#$%&()*+,\-./0-9:;<=>?@A-Z[\]^_`a-z{|}~]"
+string_ascii_value = rf"({string_ascii})|({escaped_char})"
+string_lit = rf'"(({string_ascii_value})|({byte_value}))*"'
+
+# TODO: add backslash new-line support to the string rule above
+# q.v. string = r'"(([^"]|\\")*(?m:\\$)?)+"' from previous version
+
+literal = rf"({string_lit})|({char_lit})|({decimal_float_lit})|({integer_lit})"
+literal_comp = re.compile(literal)
 
 #alphabet character or underscore followed by
 #any number of alphanumerics or underscores
@@ -133,7 +159,7 @@ comment = r'//.*?(?m:$)'
 
 #(?m.*)*? matches any characters, including linebreaks,
 #matching a minimal number (so until the first */)
-multicomment = r'/\*(?m:.*)*?\*/'
+multicomment = r'/\*(.*|\n)*?\*/'
 
 #not supported yet
 preprocessor = r'#.*?(?m:$)'
@@ -143,11 +169,9 @@ class Token:
 		self.value = text
 		self.line = line
 		self.col = col
-		
-		if number_comp.fullmatch(text):
-			self.typename = 'NUMBER'
-		elif string_comp.fullmatch(text):
-			self.typename = 'STRING'
+
+		if literal_comp.fullmatch(text):
+			self.typename = 'LITERAL'
 		elif ALL_OPERATORS.regexcomp.fullmatch(text):
 			self.typename = 'OPERATOR'
 		elif KEYWORDS.regexcomp.fullmatch(text):
@@ -155,7 +179,9 @@ class Token:
 		elif identifier_comp.fullmatch(text):
 			self.typename = 'ID'
 		else:
-			raise "can't deduce token type"
+			# need some typename attribute even for unrecognized
+			# tokens
+			self.typename = 'INVALID'
 	
 	def __str__(self):
 		return self.value
