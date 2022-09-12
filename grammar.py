@@ -1,71 +1,20 @@
+from parser import Rule, Reduction
 from token import Token, TYPES
 
-class Node:
-	def __init__(self, children = None):
-		self.children = children
-		self.size = 1
-		if children:
-			for child in children:
-				self.size += child.size
-				assert isinstance(child, Node)
-			assert isinstance(self, Nonterminal)
-		else:
-			assert isinstance(self, Terminal)
-	
-class Nonterminal(Node):
-	def __init__(self, rule, children = None):
-		super().__init__(children)
-		self.rule = rule
-		assert isinstance(rule, Rule)
+binary = Rule('binary')
+binary.reductions = [
+	Reduction(TYPES.NUMBER, '+', TYPES.NUMBER),
+	Reduction(TYPES.NUMBER, '-', TYPES.NUMBER)
+]
 
-class Terminal(Node):
-	def __init__(self, token):
-		super().__init__()
-		self.token = token
-		assert isinstance(token, Token)
+expr = Rule('expr')
+expr.reductions = [
+	Reduction('(', expr, ')'),
+	Reduction(binary)
+]
 
-#
-class Reduction:
-	def __init__(self, reduction):
-		self.reduction = reduction
-		self.terminals = []
-		for r in range(len(reduction)):
-			if isinstance(reduction[r], TYPES, str):
-				self.terminals.append(r)
-		
-		assert isinstance(reduction, list):
-		assert len(reduction) > 0
-		assert len(terminals) > 0
-		for r in reduction:
-			assert isinstance(r, Rule, TYPES, str)
-		
-	#If the leftmost tokens match this Reduction,
-	#returns a list of Nodes corresponding to the
-	#pieces of the reduction. i.e.,
-	#tokens = [Token('(',...), Token('foo',...), Token('bar',...), Token(')',...)]
-	#self.reduction = ['(', rule_for_foobar, ')']
-	#returns [Terminal(tokens[0]), rule_for_foobar.reduce(tokens[1:3], Terminal(tokens[3])]
-	def reduce(self, tokens):
-		if 
-
-#Simply an ordered list of Reductions.
-#Equivalent to a line of standard grammar.
-class Rule:
-	def __init__(self, name, reductions):
-		self.name = name
-		self.reductions = reductions
-		
-		assert isinstance(name, str)
-		assert isinstance(reductions, list)
-		assert len(reductions) > 0
-		for r in reductions:
-			assert isinstance(r, Reduction)
-	
-	def reduce(self, tokens):
-		output = None
-		for r in self.reductions:
-			if output := r.reduce(tokens):
-				break
-		if output is not None:
-			output = Nonterminal(self, output)
-		return output
+#hardcode because token.py is not updated yet
+tokens = [Token('(',0,0), Token('1',0,1), Token('-',0,2), Token('2',0,3), Token(')',0,4)]
+tokens[1].typename = TYPES.NUMBER
+tokens[3].typename = TYPES.NUMBER
+print(expr.match(tokens))

@@ -2,7 +2,7 @@
 #to understand how to use tokens, but not the tokenizer itself
 
 import re
-from enum import Enum
+from enum import Enum, auto
 
 _REGEX_ESCAPES = {
 	'(',
@@ -104,6 +104,7 @@ class TYPES(Enum):
 	STRING = auto()
 	NUMBER = auto()
 	ID = auto()
+	LITERAL = auto()
 
 
 #matches 0 or more decimal numbers separated by an optional, single tick
