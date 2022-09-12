@@ -2,6 +2,7 @@
 #to understand how to use tokens, but not the tokenizer itself
 
 import re
+from enum import Enum
 
 _REGEX_ESCAPES = {
 	'(',
@@ -97,13 +98,12 @@ TWOCHAR_OPERATORS = RegexSet({
 ALL_OPERATORS = RegexSet.union(ONECHAR_OPERATORS, TWOCHAR_OPERATORS)
 ALL_SYMBOLS = RegexSet.union(KEYWORDS, ALL_OPERATORS)
 
-TYPES = frozenset({
-	'OPERATOR',
-	'KEYWORD',
-	'STRING',
-	'NUMBER',
-	'ID'
-})
+class TYPES(Enum):
+	OPERATOR = auto()
+	KEYWORD = auto()
+	STRING = auto()
+	NUMBER = auto()
+	ID = auto()
 
 
 #matches 0 or more decimal numbers separated by an optional, single tick
@@ -171,17 +171,18 @@ class Token:
 		self.col = col
 
 		if literal_comp.fullmatch(text):
-			self.typename = 'LITERAL'
+			self.typename = TYPES.LITERAL
 		elif ALL_OPERATORS.regexcomp.fullmatch(text):
-			self.typename = 'OPERATOR'
+			self.typename = TYPES.OPERATOR
 		elif KEYWORDS.regexcomp.fullmatch(text):
-			self.typename = 'KEYWORD'
+			self.typename = TYPES.KEYWORD
 		elif identifier_comp.fullmatch(text):
-			self.typename = 'ID'
+			self.typename = TYPES.ID
 		else:
 			# need some typename attribute even for unrecognized
 			# tokens
-			self.typename = 'INVALID'
+			# self.typename = 'INVALID'
+			assert False # I disagree, an unrecognized token is a fatal lexing error
 	
 	def __str__(self):
 		return self.value
