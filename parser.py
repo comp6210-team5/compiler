@@ -30,26 +30,30 @@ class Nonterminal(Node):
 		assert isinstance(rule, str)
 	
 	def _getname(self):
-		return self.rule
+		return '<' + self.rule + '>'
 
 class Terminal(Node):
 	def __init__(self, token):
-		self.num_terminals = 1
-		super().__init__()
+		if token is None:
+			self.num_terminals = 0
+		else:
+			assert isinstance(token, Token)
+			self.num_terminals = 1
 		self.token = token
-		assert isinstance(token, Token)
+		super().__init__()
 		
 	def _getname(self):
+		if self.token is None:
+			return ''
 		return self.token.value
 
 class Reduction:
 	def __init__(self, *reduction):
 		self.reduction = reduction
-		
-		assert len(reduction) > 0
+
 		for r in reduction:
 			assert isinstance(r, (Rule, TYPES, str))
-		
+
 	#If the leftmost tokens match this Reduction,
 	#returns a list of Nodes corresponding to the
 	#pieces of the reduction. i.e.,
@@ -57,25 +61,39 @@ class Reduction:
 	#self.reduction = ['(', rule_for_foobar, ')']
 	#returns [Terminal(tokens[0]), rule_for_foobar.match(tokens[1:3], Terminal(tokens[3])]
 	def reduce(self, tokens):
+		
+		#We match the empty token (i.e., epsilon)
+		if len(self.reduction) == 0:
+			return Terminal(None)
+	
 		matches = []
 		tokens_consumed = 0
 		for r in self.reduction:
+			
+			#If this part of the reduction is another Rule
 			if isinstance(r, Rule):
 				match = r.match(tokens[tokens_consumed:])
+				
+				#Need to make sure the Rule actually matched
 				if match is None:
 					return None
+					
+				#We consumed some amount of Tokens
 				tokens_consumed += match.num_terminals
 				matches.append(match)
-				
+			
+			#If this part of the reduction matches a token type or literal value
 			elif self._match_terminal(tokens[tokens_consumed], r):
 				matches.append(Terminal(tokens[tokens_consumed]))
 				tokens_consumed += 1
 			
+			#No match
 			else:
 				return None
 		
 		return matches
 	
+	#Convenience function to match either token types or literal values
 	def _match_terminal(self, token, r):
 		if isinstance(r, str):
 			return token.value == r
@@ -102,5 +120,7 @@ class Rule:
 	def match(self, tokens):
 		for r in self.reductions:
 			if reduction := r.reduce(tokens):
+				if not hasattr(reduction, '__iter__'):
+					reduction = [reduction]
 				return Nonterminal(self.name, reduction)
 		return None
