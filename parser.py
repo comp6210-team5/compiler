@@ -64,34 +64,38 @@ class Reduction:
 		
 		#We match the empty token (i.e., epsilon)
 		if len(self.reduction) == 0:
-			return Terminal(None)
+			return Terminal(None), 0
 	
 		matches = []
 		tokens_consumed = 0
 		for r in self.reduction:
 			
-			#If this part of the reduction is another Rule
-			if isinstance(r, Rule):
-				match = r.match(tokens[tokens_consumed:])
-				
-				#Need to make sure the Rule actually matched
-				if match is None:
-					return None
+			try:
+				#If this part of the reduction is another Rule
+				if isinstance(r, Rule):
+					match = r.match(tokens[tokens_consumed:])
 					
-				#We consumed some amount of Tokens
-				tokens_consumed += match.num_terminals
-				matches.append(match)
+					#Need to make sure the Rule actually matched
+					if isinstance(match, int):
+						return None, match + tokens_consumed
+						
+					#We consumed some amount of Tokens
+					tokens_consumed += match.num_terminals
+					matches.append(match)
+				
+				#If this part of the reduction matches a token type or literal value
+				elif self._match_terminal(tokens[tokens_consumed], r):
+					matches.append(Terminal(tokens[tokens_consumed]))
+					tokens_consumed += 1
+				
+				#No match
+				else:
+					return None, tokens_consumed
 			
-			#If this part of the reduction matches a token type or literal value
-			elif self._match_terminal(tokens[tokens_consumed], r):
-				matches.append(Terminal(tokens[tokens_consumed]))
-				tokens_consumed += 1
-			
-			#No match
-			else:
-				return None
+			except IndexError:
+				return None, tokens_consumed - 1
 		
-		return matches
+		return matches, tokens_consumed
 	
 	#Convenience function to match either token types or literal values
 	def _match_terminal(self, token, r):
@@ -118,9 +122,18 @@ class Rule:
 	#returns a Nonterminal node with corresponding to this Rule
 	#and with children corresponding to the matching Reduction.
 	def match(self, tokens):
+		max_consumption = 0
 		for r in self.reductions:
-			if reduction := r.reduce(tokens):
+			reduction, tokens_consumed = r.reduce(tokens)
+			if reduction:
 				if not hasattr(reduction, '__iter__'):
 					reduction = [reduction]
 				return Nonterminal(self.name, reduction)
-		return None
+			max_consumption = max(max_consumption, tokens_consumed)
+		return max_consumption
+
+def parse(top_rule, tokens, **kwargs):
+	result = top_rule.match(tokens)
+	if isinstance(result, int):
+		raise BaseException('Invalid syntax at ' + str(tokens[result].line) + ':' + str(tokens[result].col))
+	return result

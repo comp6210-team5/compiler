@@ -1,4 +1,4 @@
-from parser import Rule, Reduction
+from parser import Rule, Reduction, parse
 from token import Token, TYPES
 
 eps = Rule('epsilon')
@@ -18,10 +18,15 @@ expr.reductions = [
 ]
 
 #hardcode because token.py is not updated yet
-tokens = [Token('(',0,0), Token('(',0,0), Token('1',0,1), Token('-',0,2), Token('2',0,3), Token(')',0,4), Token(')',0,0)]
+tokens = [Token('(',0,0), Token('(',0,1), Token('1',1,0), Token('-',1,1), Token('2',1,2), Token(')',2,0), Token(')',2,1)]
 tokens[2].typename = TYPES.NUMBER
 tokens[4].typename = TYPES.NUMBER
-print(expr.match(tokens))
+print(parse(expr, tokens))
 
 del tokens[2:5]
-print(expr.match(tokens))
+print(parse(expr, tokens))
+
+del tokens[-1]
+del expr.reductions[2]
+print([token.value for token in tokens])
+print(parse(expr, tokens))
