@@ -18,7 +18,6 @@ def main():
 		# read the entire source file
 		source = f.read()
 
-		import pdb; pdb.set_trace()
 		# pass that source text to the tokenizer
 		tokens = tokenizer.tokenize(source, args.print_tokens)
 

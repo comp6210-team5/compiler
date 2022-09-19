@@ -8,3 +8,4 @@ __pycache__/*
 *.pdf
 
 gcc.c
+gzip.c

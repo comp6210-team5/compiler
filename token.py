@@ -63,6 +63,8 @@ ONECHAR_OPERATORS = RegexSet({
 	'?',
 	'+',
 	'-',
+	'%',
+	'~',
 	'/',
 	'*',
 	'<',
@@ -105,6 +107,23 @@ TYPES = frozenset({
 	'ID'
 })
 
+IGNORED_TYPES = frozenset({
+	'comment',
+	'multicomment',
+	'whitespace',
+	'preprocessor',
+})
+
+TYPES = frozenset({
+	'operator',
+	'keyword',
+	'literal',
+	'identifier',
+	'comment',
+	'multicomment',
+	'whitespace',
+	'preprocessor',
+})
 
 #matches 0 or more decimal numbers separated by an optional, single tick
 decimal_digits = r"[0-9]('?[0-9])*"
@@ -126,11 +145,10 @@ integer_lit = rf"({decimal_lit})|({hex_lit})|({binary_lit})|({octal_lit})"
 # digits.
 decimal_float_lit = rf"({decimal_digits}\.({decimal_digits})?)|(({decimal_digits})?\.{decimal_digits})"
 
-# TODO: do we want a number literal to join all of the individual decimal
-# literals? Or do we want to join all literals (numbers and strings) into a
-# single token type?
-
-escaped_char = r"""\\[abefnrtv\\'"]"""
+# escaped_char includes a newline character to allow "multi-line\
+# strings"
+escaped_char = r"""\\[0abefnrtv\\'"
+]"""
 hex_byte_value = r"\\x[0-9A-Fa-f]{2}"
 octal_byte_value = r"\\[0-7]{3}"
 byte_value = rf"({hex_byte_value})|({octal_byte_value})"
@@ -146,42 +164,33 @@ string_lit = rf'"(({string_ascii_value})|({byte_value}))*"'
 # q.v. string = r'"(([^"]|\\")*(?m:\\$)?)+"' from previous version
 
 literal = rf"({string_lit})|({char_lit})|({decimal_float_lit})|({integer_lit})"
-literal_comp = re.compile(literal)
 
 #alphabet character or underscore followed by
 #any number of alphanumerics or underscores
 identifier = r'[a-zA-Z_][a-zA-Z0-9_]*'
-identifier_comp = re.compile(identifier)
 
 #.*? does not match linebreaks, is minimal
 #(?m:$) matches end-of-line
 comment = r'//.*?(?m:$)'
 
-#(?m.*)*? matches any characters, including linebreaks,
+#(?s:.*)*? matches any characters, including linebreaks,
 #matching a minimal number (so until the first */)
-multicomment = r'/\*(.*|\n)*?\*/'
+# fix: ?s is re.DOTALL, which causes dot to match newlines
+
+# fix2: using re.DOTALL appears to avoid the hanging that lazy matching an OR of
+# .* and a newline. Also the former regex was incorrect, should be (.|\n)*?
+# rather than (.*|\n)*?, which was probably the reason for hanging
+multicomment = r'/\*(?s:.*?)\*/'
 
 #not supported yet
 preprocessor = r'#.*?(?m:$)'
 
 class Token:
-	def __init__(self, text, line, col):
+	def __init__(self, text, typename, line, col):
 		self.value = text
+		self.typename = typename
 		self.line = line
 		self.col = col
-
-		if literal_comp.fullmatch(text):
-			self.typename = 'LITERAL'
-		elif ALL_OPERATORS.regexcomp.fullmatch(text):
-			self.typename = 'OPERATOR'
-		elif KEYWORDS.regexcomp.fullmatch(text):
-			self.typename = 'KEYWORD'
-		elif identifier_comp.fullmatch(text):
-			self.typename = 'ID'
-		else:
-			# need some typename attribute even for unrecognized
-			# tokens
-			self.typename = 'INVALID'
 	
 	def __str__(self):
 		return self.value
