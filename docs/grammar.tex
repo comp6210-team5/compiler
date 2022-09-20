@@ -62,9 +62,11 @@ appear in the source text:
   <printable_ascii> ::= "the ASCII code 32 (0x20)" \ldots "the ASCII code 126 (0x7e)" .
   
 \end{grammar}
-Note that this disallows most control characters, the NUL character,
-and any extended ASCII characters (above 127). Arbitrary bytes may be
-represented in strings using various escape sequences. %TODO: described later
+Note that this disallows most control characters, the NUL character, and any
+extended ASCII characters (above 127). Arbitrary bytes may be represented in
+strings using various escape sequences (namely \TT{\textbackslash xXX}. Also
+note that we allow only newlines, spaces, and tabs as whitespace.
+  
 \section*{Lexical elements}
 \subsection*{Comments}
 Comments are ignored by the compiler and may come in two forms: (1)
@@ -88,22 +90,24 @@ longest sequence of characters which match its definition (i.e. the
 lexer is greedy).
 
 \subsection*{Identifiers}
+% TODO: do we want to allow '$' in identifiers?
 \begin{grammar}
   <identifier> ::= <letter> \lrep <letter> | <digit> \rrep
 \end{grammar}
 
 \subsection*{Keywords}
 Keywords are any of the following (case-insensitive):
+% TODO: expand
 \begin{verbatim}
 if, else, return, switch, case, while, break, continue
 \end{verbatim}
 
 \subsection*{Operators \& Punctuation}
 The following are recognized as either operators or punctuation:
-% TODO: is '?' a valid operator in C?
-% TODO: and '\', is that for line-breaks?
+% TODO: '\', is that for line-breaks?
+% TODO: we're definitely still missing some, i.e. << >> %= += -= *= <<= |= and c.
 \begin{verbatim}
-;, :, ?, +, -, /, *, <, >, =, !, &, |, [, ], ^, (, ), ,, {, }, \, !=, ==, <=, &&, ||, ++, --
+; : ? + - ~ % / * < > = ! & | [ ] ^ ( ) , { } \ != == <= && || ++ --
 \end{verbatim}
 
 \subsection*{Literals}
@@ -157,7 +161,10 @@ For readability, a single \texttt{\'} character may appear after a base prefix o
 
   % https://en.wikipedia.org/wiki/Escape_sequences_in_C
   % except '?' because I don't know what trigraphs are
-  <escaped_char> ::= `\textbackslash' \lgrp `a' | `b' | `e' | `f' | `n' | `r' | `t' | `v' | `\textbackslash' | `\'' | `\"' \rgrp .
+  % Also added the actual newline for "multi-line\
+  % strings" in source-code. Or multi-line character literals lol
+  <escaped_char> ::= `\textbackslash' \lgrp `a' | `b' | `e' | `f' | `n' | `r' |
+  `t' | `v' | `\textbackslash' | `\'' | `\"' | "The ASCII char 0x0a (newline)" \rgrp .
 \end{grammar}
 
 \subsubsection*{String literals}
