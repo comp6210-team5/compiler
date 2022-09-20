@@ -10,6 +10,7 @@ def tokenize(source, print_tokens = False):
 			 rf'(?P<identifier>{identifier})|'+\
 			 rf'(?P<whitespace>\s+)')
 
+	lc = linecol(source)
 	pos = 0
 	last = 0
 	tokens = []
@@ -19,13 +20,13 @@ def tokenize(source, print_tokens = False):
 		start = m.start()
 		pos = m.end()
 		if start != last:
-			line, col = linecol(source, start)
+			line, col = lc[pos]
 			# TODO: error handling
 			raise Exception(f"found something that doesn't look like a token at l:{line} c:{col}:\n"+\
 				f"{source[last:start]}")
 		last = pos
 		
-		line, col = linecol(source, pos)
+		line, col = lc[pos]
 		typename = m.lastgroup
 		if typename not in TYPES:
 			raise Exception(f"matched token with typename {typename},"+\
@@ -37,21 +38,24 @@ def tokenize(source, print_tokens = False):
 			typename = 'keyword'
 
 		if typename not in IGNORED_TYPES:
-		        tokens.append(Token(m[0], typename, line, col))
+			tokens.append(Token(m[0], typename, line, col))
 	
 	if print_tokens:
 		print('\n'.join(f"{token.typename} l:{token.line} c:{token.col} --- {token}" for token in tokens))
 	return tokens
 
 
-# TODO: make faster
-def linecol(source, pos):
-	if pos == 0:
-		return 0, 1
+def linecol(source):
+	positions = []
+	lines = source.split('\n')
 
-	lines = source[:pos-1].split('\n')
-	line = len(lines) + 1
-	col = len(lines[-1]) + 1
-	return line, col
+	for i, line in enumerate(lines):
+		for j in range(len(line)):
+			positions.append((i, j))
+			
+		positions.append((i, len(line)))
+	
+	return positions
+
 
 
