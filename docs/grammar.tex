@@ -1,6 +1,5 @@
 \documentclass{article}
 \input{header}
-
 % https://ctan.org/pkg/syntax-mdw
 % provides grammar environment for CFG typesetting
 \usepackage{syntax}
@@ -14,6 +13,8 @@
 \usepackage{hyperref}
 
 \title{The C Programming Language Specification}
+
+%TODO -- add explanations, reorganize sections they kinda everywhere, and make pretty 
 
 \begin{document}
 \maketitle
@@ -37,8 +38,6 @@ The syntax is specified using a variant of Extended Backus-Naur Form (EBNF) defi
   
   <Repetition> ::= `{' <Expression> `}' .
 
-  <Test> ::= \lgrp <Expression> \rgrp .
-  
 \end{grammar}
 % TODO: explain
 \section*{Source code representation}
@@ -48,8 +47,6 @@ appear in the source text:
 \begin{grammar}
   <newline> ::= "the ASCII code 10 (0x0a)" .
 
-  % TODO: whitespace is the python regex '\s' rather than just spaces, tabs, and
-  % newlines
   <white_space> ::= \lgrp <new_line> | "the ASCII code 32 (0x20)" | "the ASCII code 13 (0x0d)" \rgrp \lrep <new_line> | "the ASCII code 32 (0x20)" | "the ASCII code 13 (0x0d)" \rrep .
 
   <letter> ::= 'A' \ldots 'Z' | 'a' \ldots 'z' | '_' .
@@ -96,7 +93,7 @@ lexer is greedy).
 \end{grammar}
 
 \subsection*{Keywords}
-Keywords are any of the following:
+Keywords are any of the following (case-insensitive):
 \begin{verbatim}
 if, else, return, switch, case, while, break, continue
 \end{verbatim}
@@ -172,4 +169,435 @@ For readability, a single \texttt{\'} character may appear after a base prefix o
   <string_ascii> ::= <printable_ascii> "\textbf{except}" \lgrp `\textbackslash' | `\"' \rgrp .
 \end{grammar}
 
+
+\section*{Types}
+\begin{grammar}
+	<Type> ::= <TypeName> `(' <TypeArgs> `)' | <TypeLit> | `[' <Type> `]' .
+
+	<TypeName> ::= <identifier> .  % <QualifiedIdent>
+
+	<TypeArgs> = `(' <TypeList> \lopt `,' \ropt `)' .
+
+	<TypeList> = <Type> \lrep `,' <Type> \rrep .
+
+	<TypeLit> = <ArrayType> | <StructType> | <FunctionType> 
+			%| <InterfaceType> | <PointerType> | <SliceType> | <MapType> | <ChannelType>
+\end{grammar}
+
+
+
+\subsection*{Array Types}
+\begin{grammar}
+	<ArrayType> = `(' <ArrayLength> `)' <ElementType> .
+
+	<ArrayLength> = <Expression> .
+ 
+	<ElementType> = <Type> . 
+\end{grammar}
+ 
+\subsection*{Struct Types} 
+\begin{grammar} 
+	<StructType> = `struct' `\{'  \lrep <FieldDecl> `;'  \rrep `\}' .
+
+	<FieldDecl> = \lgrp<IdentifierList Type> | <EmbeddedField>\rgrp \lopt <Tag> \ropt . 
+
+	<EmbeddedField> = \lopt `*' \ropt <TypeName> \lopt <TypeArgs> \ropt .
+
+	<Tag> = <string_lit> .  
+\end{grammar}
+
+
+\subsection*{Function Types} 
+\begin{grammar} 
+	<FunctionType> = `func' <Signature> .
+
+	<Signature> = <Parameters> \lopt <Result> \ropt .
+
+	<Result> = <Parameters> | <Type> .
+
+	<Parameters> = "(" \lopt <ParameterList> \lopt "," \ropt \ropt ")" .
+
+	<ParameterList> = <ParameterDecl> \lrep "," <ParameterDecl> \rrep .
+
+	<ParameterDecl> = \lopt <IdentifierList> \ropt \lopt "..." \ropt <Type> .
+\end{grammar}
+
+\section*{Blocks} 
+\begin{grammar} 
+	<Block> = `\{' <StatementList> `\}' . 
+
+	<StatementList> = \lrep <Statement> `;' \rrep .
+
+\end{grammar}
+
+\section*{Declarations and Scope} 
+\begin{grammar} 
+	<Declaration> = <ConstDecl> | <TypeDecl> | <VarDecl> .
+
+	<TopLevelDecl> = <Declaration> | <FunctionDecl> | <MethodDecl> . 
+\end{grammar} 
+
+
+\subsection*{Constant Declaration}
+\begin{grammar}
+	<ConstDecl> = `const' \lgrp <ConstSpec> | `(' \lrep <ConstSpec> `;' \rrep `)' \rgrp .
+
+	<ConstSpec> = <IdentifierList> \lrep \lrep <Type> `=' <ExpressionList> \rrep
+
+	<IdentifierList> = <identifier> \lrep `,' <identifier> \rrep . 
+
+	<ExpressionList> = <Expression> \lrep `,' <Expression> \rrep . 
+\end{grammar} 
+
+\subsection*{Type Declarations} 
+%binds an identifier to a <Type>. 
+\begin{grammar} 
+	<TypeDecl> = `type' \lgrp <TypeSpec>  | `(' \lrep <TypeSpec> `;' \rrep `)' \rgrp .
+
+	<TypeSpec> = <AliasDecl> | <TypeDef>  .
+\end{grammar} 
+
+\subsection*{Alias Declarations}
+%Binds identifier to type
+\begin{grammar} 
+	<AliasDecl> = <identifier> `=' <Type> . 
+\end{grammar}
+
+
+%This may go 
+\subsection*{Type Definitions}
+%Creates new type with same <UnderlyingType> and operations as given type && binds an identifier
+%Not sure if this stays
+\begin{grammar} 
+	<TypeDef> = <identifier> \lopt <TypeParameters> \ropt  <Type> .
+\end{grammar}
+
+%?? 
+\subsection*{Type Parameter Declarations}
+%Declares type param for a generic function or type declaration.
+%All non-blank names in list must be unique
+%Type parameter replaces w/ <TypeArguement> upon instantiation of generic function or type
+\begin{grammar} 
+	<TypeParameters> = `[' <TypeParamList> \lopt 	`,' \ropt `]' . 
+
+	<TypeParamList> = <TypeParamDecl> \lrep `,' <TypeParamDecl> \rrep .
+	
+	<TypeParamDecl> = <IdentifierList> <TypeConstraint> . 
+\end{grammar} 
+
+%??
+\subsection*{Type Constraints}
+%interface that defines the set of permissible type arguments for the repective type param && controls the operations supported by values of that type param
+%[T ~int] -- okay  
+%type Constraint ~int -- illegal: ~int not in type param list
+\begin{grammar} 
+	<TypeConstraint> = <TypeElem> .
+\end{grammar} 
+
+\section*{Variable Declarations} 
+%Creates one or more <Variables>, binds corresponding identifier, && gives type and initial value
+%i.e. var i int
+\begin{grammar} 
+	<VarDecl> = `var' \lgrp <VarSpec> | `(' \lrep <VarSpec> `;' \rrep `)' \rgrp .
+
+	<VarSpec> = <IdentifierList> \lgrp <Type> \lopt `=' <ExpressionList> \ropt | `=' <ExpressionList> \lgrp .
+\end{grammar}
+
+\subsection*{Short variable declarations}
+%shorthand for <variable declaration> 
+% i, j := 0, 10 
+\begin{grammar} 
+	<ShortVarDecl> = <IdentifierList> `:=' <ExpressionList> .
+\end{grammar}
+
+\section*{Function Declarations} 
+%binds identifier to a function
+%If function declares <TypeParameters>, the function name denotes a generic function
+\begin{grammar} 
+	<FunctionDecl> = `func' <FunctionName> \lopt <TypeParameters> \ropt <Signature> \lopt <FunctionBody> \ropt .
+	
+	<FunctionName> = <identifier> .
+	
+	<FunctionBody> = <Block> .
+\end{grammar} 
+
+\section*{Method Declarations}
+%method is a function w/ a receiver
+%binds an identifier, and associates the method w/ receiver base type
+\begin{grammar} 
+	<MethodDecl> = `func' <Receiver> <MethodName> <Signatue> \lopt <FunctionBody> \ropt .
+
+	<Receiver> = <Parameters> . 
+\end{grammar} 
+
+\section*{Expressions}
+\subsection*{Operands}
+\begin{grammar}
+	<Operand> = <Literal> | <OperandName> \lopt <TypeArgs> \ropt | `(' Expression `)' .
+
+	<Literal> = <BasicLit> | <FunctionLit> . %CompositeLit  
+
+	<BasicLit> = int_lit | float_lit | string_lit . %| rune_lit | | imaginary_lit
+
+	<OperandName> = identifier %| QualifiedIdent
+\end{grammar}
+
+\subsection*{Function literals}
+\begin{grammar}
+	<FunctionLit> = `func' <Signature> <FunctionBody> .
+\end{grammar}
+
+
+%TODO figure out if supported or nah when not sleep deprived
+\subsection*{Primary expressions}
+\begin{grammar}
+	<PrimaryExpr> = <Operand> | <Conversion> | <MethodExpr> | <PrimaryExpr Arguments> .
+%				<PrimaryExpr Selector> | <PrimaryExpr Index> | <PrimaryExpr Slice> | <PrimaryExpr TypeAssertion> 
+	
+	<Arguments> = `(' \lopt \lgrp <ExpressionList> | <Type> \lopt `,' <ExpressionList> \ropt \rgrp \lopt `...' \ropt \lopt `,' \ropt \ropt `)' .
+%	<Selector> = `.' <identifier> .
+%	<Index> = `[' <Expression> `]' .
+%	<Slice> = `[' [ <Expression> ] `:' [ <Expression> ] `]' |
+%              	 `[' \lopt <Expression> \ropt `:' <Expression> `:' <Expression> `]' .
+%	<TypeAssertion> = `.' `(' <Type> `)' .
+	
+\end{grammar}
+
+
+%%??
+\subsection*{Method expressions}
+\begin{grammar}
+	<MethodExpr> = <ReceiverType> `.' <MethodName> .
+
+	<ReceiverType> = <Type> .
+\end{grammar}
+
+\subsection*{Operators}
+\begin{grammar}
+	<Expression> = <UnaryExpr> | <Expression> <binary_op> <Expression> .
+
+	<UnaryExpr> = <PrimaryExpr> | <unary_op> <UnaryExpr> .
+
+	<binary_op>  = `||' | `\&\&' | <rel_op> | <add_op> | <mul_op> .
+
+	<rel_op> = `==' | `!=' | `<' | `<=' | `>' | `>=' .
+
+	<add_op> = `+' | `-' | `|' | `\^{}' .
+
+	<mul_op> = `*' | `/' | `\%' | `<<' | `>>' | `\&' | `\&\^{}' .
+
+	<unary_op> = `+' | `-' | `!' | `\^{}' | `*' | `\&' %| `<-' .
+\end{grammar}
+
+
+\section*{Statements}
+\begin{grammar}
+	<Statement> =
+		<Declaration> | <LabeledStmt> | <SimpleStmt> | \\
+		<ReturnStmt> | <BreakStmt> | <ContinueStmt> | \\
+		<Block> | <IfStmt> | <SwitchStmt> | <ForStmt> | .
+		%<GoStmt> | <GotoStmt> | <FallthroughStmt> | <SelectStmt> | <DeferStmt>
+
+	<SimpleStmt> = <EmptyStmt> | <ExpressionStmt> | <IncDecStmt> | <Assignment> | <ShortVarDecl> . 
+				%<SendStmt>
+\end{grammar}
+
+%duh
+\subsection*{Empty statements}
+\begin{grammar}
+	<EmptyStmt> = .
+\end{grammar} 
+
+%figure out what this is. may cut
+\subsection*{Labeled statements}
+\begin{grammar}
+	<LabeledStmt> = <Label> `:' <Statement> .
+
+	<Label> = <identifier> .
+\end{grammar}
+
+\section*{Expression statements}
+\begin{grammar}
+	<ExpressionStmt> = <Expression> .
+\end{grammar}
+
+\subsection*{IncDec statements}
+%Increment/Decrement 
+\begin{grammar}
+	<IncDecStmt> = <Expression> \lgrp `++' | `--' \rgrp .
+\end{grammar}
+
+\subsection*{Assignment statements}
+\begin{grammar}
+	<Assignment> = <ExpressionList> <assign_op> <ExpressionList> .
+
+	<assign_op> = \lopt <add_op> | <mul_op> \ropt "=" .
+\end{grammar}
+
+\subsection*{If statements}
+\begin{grammar}
+	<IfStmt> = `if' \lopt <SimpleStmt> `;' \ropt <Expression Block> \ropt `else' \lgrp <IfStmt> | <Block> \rgrp \ropt .
+\end{grammar}
+
+
+
+\subsection*{Switch statements}
+\begin{grammar}
+	<SwitchStmt> = <ExprSwitchStmt> | <TypeSwitchStmt> .
+\end{grammar}
+
+%Maybe
+\subsection*{Expression switches}
+\begin{grammar}
+	<ExprSwitchStmt> = `switch' \lopt <SimpleStmt> `;' \ropt \lopt <Expression> \ropt `\{' \{ <ExprCaseClause> \} `\}' .
+
+	<ExprCaseClause> = <ExprSwitchCase> `:' <StatementList> .
+
+	<ExprSwitchCase> = `case' <ExpressionList> | `default' .
+\end{grammar}
+
+%Maybe 
+\subsection*{Type switches}
+\begin{grammar}
+	<TypeSwitchStmt>  = `switch' \lopt <SimpleStmt> `;' \ropt <TypeSwitchGuard> `\{' \{ <TypeCaseClause> \} `\}' .
+
+	<TypeSwitchGuard> = \lopt <identifier> `:=' \ropt <PrimaryExpr> `.' `(' `type' `)' .
+
+	<TypeCaseClause> = <TypeSwitchCase> `:' <StatementList> .
+
+	<TypeSwitchCase> = `case' <TypeList> | `default' .
+\end{grammar}
+
+
+
+\subsection*{For statements}
+\begin{grammar}
+	<ForStmt> = `for' \lopt <Condition> | <ForClause> | <RangeClause> \ropt <Block> .
+
+	<Condition> = <Expression> .
+\end{grammar}
+
+\subsection*{For statements with for clause}
+\begin{grammar}
+	<ForClause> = \lopt <InitStmt> \ropt `;' \lopt <Condition> \ropt `;' \lopt <PostStmt> \ropt .
+
+	<InitStmt> = <SimpleStmt> .
+
+	<PostStmt> = <SimpleStmt> .
+\end{grammar}
+
+\subsection*{For statements with range clause}
+\begin{grammar}
+	<RangeClause> = \lopt <ExpressionList> `=' | <IdentifierList> `:=' \ropt `range' <Expression> .
+\end{grammar}
+
+\subsection*{Return statements}
+\begin{grammar}
+	<ReturnStmt> = `return' \lopt <ExpressionList> \ropt .
+\end{grammar} 
+
+\subsection*{Break statements}
+\begin{grammar}
+	<BreakStmt> = `break' \lopt Label \ropt .
+\end{grammar}
+
+
+\subsection*{Continue statements}
+\begin{grammar}
+	<ContinueStmt> = `continue' \lopt Label \ropt .
+\end{grammar}
 \end{document}
+
+%Graveyard 
+
+%SliceTypes Not Supported 
+%SliceType = "[" "]" ElementType
+
+%PointerTypes Not supported 
+%PointerType = "*" BaseType .
+%BaseType    = Type .
+
+%Interfaces not supported 
+%\subsection*{Interface Types} 
+%\begin{grammar}
+%	<InterfaceType>  = `interface' `\{' \lrep <InterfaceElem> `;' \rrep `\}' .
+%
+%	<InterfaceElem> = <MethodElem> | <TypeElem> .
+%
+%	<MethodElem> = <MethodName Signature> .
+%
+%	<MethodName> = <identifier> .
+%
+%	<TypeElem> = <TypeTerm> \lrep `|' <TypeTerm> \rrep .
+%
+%	<TypeTerm> = <Type> | %<UnderlyingType> .
+%
+%	<UnderlyingType>  = `~' <Type> .
+%\end{grammar} 
+
+
+%Map Types not supported 
+%MapType     = "map" "[" KeyType "]" ElementType .
+%KeyType     = Type .
+
+
+%Channel Types not supported 
+%ChannelType = ( "chan" | "chan" "<-" | "<-" "chan" ) ElementType .
+%Not supported
+%Qualified identifiers
+%QualifiedIdent = PackageName "." identifier .
+
+
+%Not supported
+%Composite literals
+%CompositeLit  = LiteralType LiteralValue .
+%LiteralType   = StructType | ArrayType | "[" "..." "]" ElementType |
+%                SliceType | MapType | TypeName [ TypeArgs ] .
+%LiteralValue  = "{" [ ElementList [ "," ] ] "}" .
+%ElementList   = KeyedElement { "," KeyedElement } .
+%KeyedElement  = [ Key ":" ] Element .
+%Key           = FieldName | Expression | LiteralValue .
+%FieldName     = identifier .
+%Element       = Expression | LiteralValue .
+
+%Go statements not supported
+%GoStmt = "go" Expression .
+
+%Not supported 
+%\subsection*{Select statements}
+%\begin{grammar}
+%	<SelectStmt> = `select' `\{' \{ <CommClause> \} `\}' .
+%
+%	<CommClause> = <CommCase> `:' <StatementList> .
+%
+%	<CommCase> = `case' \lgrp <SendStmt> | <RecvStmt> \rgrp | `default' .
+%
+%	<RecvStmt> = \lopt <ExpressionList> `=' | <IdentifierList> `:=' \ropt <RecvExpr> .
+%
+%	<RecvExpr> = <Expression> .
+%\end{grammar}
+
+%Send statements
+%SendStmt = Channel "<-" Expression .
+%Channel  = Expression .
+
+%Not supported
+%Goto statements
+%GotoStmt = "goto" Label .
+
+%Not supported
+%Fallthrough statements
+%FallthroughStmt = "fallthrough" .
+
+%Not supported 
+%Defer statements
+%DeferStmt = "defer" Expression .
+
+%Packages not supported 
+
+%Source file organization
+%SourceFile       = PackageClause ";" { ImportDecl ";" } { TopLevelDecl ";" } .
+
+%Package clause
+%PackageClause  = "package" PackageName .
+%PackageName    = identifier .
