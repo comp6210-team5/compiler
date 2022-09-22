@@ -80,14 +80,15 @@ tokens (i.e. they are ignored rather than tokenized), since they don't
 have impact on program meaning/form.
 
 \subsection*{Tokens}
-There are four classes of tokens recognized by the compiler:
-\emph{identifiers}, \emph{keywords}, \emph{operators \& punctuation},
-and \emph{literals}. \emph{white\_space} is ignored except as it
-separates tokens, in which case one or more ``white space'' characters
-are essentially compressed into one white space rule noted in the
-character categories above. A token in the source code consists of the
-longest sequence of characters which match its definition (i.e. the
-lexer is greedy).
+There are four classes of tokens recognized by the compiler: \emph{identifiers},
+\emph{keywords}, \emph{operators \& punctuation}, and \emph{literals}. As an
+addendum, we further split literals (at the token stage) into \emph{integer
+literals}, \emph{floating-point literals}, \emph{string literals}, and
+\emph{character literals} to aid parsing. \emph{white\_space} is ignored except
+as it separates tokens, in which case one or more ``white space'' characters are
+essentially compressed into one white space rule noted in the character
+categories above. A token in the source code consists of the longest sequence of
+characters which match its definition (i.e. the lexer is greedy).
 
 \subsection*{Identifiers}
 % TODO: do we want to allow '$' in identifiers?
@@ -166,6 +167,12 @@ For readability, a single \texttt{\'} character may appear after a base prefix o
   <escaped_char> ::= `\textbackslash' \lgrp `a' | `b' | `e' | `f' | `n' | `r' |
   `t' | `v' | `\textbackslash' | `\'' | `\"' | "The ASCII char 0x0a (newline)" \rgrp .
 \end{grammar}
+The actual newline escaped character (as opposed to the representative
+\TT{``\textbackslash n''}) is included to allow multi-line strings. In actual C,
+the backslash-newlines are kind of ignored in the source-text
+entirely,\footnote{Actually deleted; q.v. N1570 Section 5.1.1.2 Note 1 sub 2}
+and thus aren't defined at the level of strings. We can't see much point in
+including them, outside of strings, aside from say really big numbers.
 
 \subsubsection*{String literals}
 \begin{grammar}
@@ -175,169 +182,69 @@ For readability, a single \texttt{\'} character may appear after a base prefix o
 
   <string_ascii> ::= <printable_ascii> "\textbf{except}" \lgrp `\textbackslash' | `\"' \rgrp .
 \end{grammar}
+% TODO: In the C11 standard, section 6.4.5 (string literals), a sequence of
+% adjacent string literals separated only by whitespace is concatenated into a
+% single multibyte character sequence during a translation phase, which is a
+% cleaner way of supporting multi-line strings anyways.
 
+
+\section*{Declarations}
+\begin{grammar}
+  <Pointer> ::= `*' \lopt <Pointer> \ropt .
+  
+  <Declarator> ::= \lopt <Pointer> \ropt <identifier> | \lopt <Pointer> \ropt
+  `(' <Declarator> `)' .
+  
+  <InitDeclarator> ::= <Declarator> | <Declarator> `=' <Initializer> .
+  
+  <VarDecl> ::= <TypeSpecifier> <InitDeclarator> \lrep `,' <InitDeclarator>
+  \rrep `;' .
+  
+  <Declaration> ::= <VarDecl> .
+  
+  <TopLevelDecl> ::= <Declaration> | <FunctionDecl> `;' | <FunctionDefinition> .
+\end{grammar}
+We (for now) differentiate between a function declaration and function
+definition (to avoid including the \TT{`;'} in the function declaration rule),
+though a function definition basically includes a function declaration (whether
+its been declared previously or not).
+% TODO: adding arrays requires solving a left-recursion of the above Declarator
+% rule to achieve <Declarator> ::= \lopt <Pointer> \ropt <Declarator> `[' stuff
+% `]'
+\subsection*{Functions}
+\begin{grammar}
+  <ParameterList> ::= <TypeSpecifier> <Declarator> \lrep `,' <TypeSpecifier>
+  <Declarator> \rrep .
+
+  <FunctionDecl> ::= <TypeSpecifier> <Declarator> `(' \lopt <ParameterList>
+  \ropt `)' .
+
+  <FunctionDefinition> ::= <FunctionDecl> <CompoundStatement> .
+\end{grammar}
 
 \section*{Types}
+A \synshorts <TypeSpecifier> \synshortsoff may be any of the following:
+\begin{verbatim}
+void char short int long float double
+\end{verbatim}
+% TODO: add structs, maybe enums?
+% TODO: add signed and unsigned, and with that, the ability to combine type
+% specifiers (N1570 section 6.7.2 constraints)
+% TODO: type names and typedefs
+
+\subsection*{Statements and Blocks}
+
 \begin{grammar}
-	<Type> ::= <TypeName> `(' <TypeArgs> `)' | <TypeLit> | `[' <Type> `]' .
-
-	<TypeName> ::= <identifier> .  % <QualifiedIdent>
-
-	<TypeArgs> = `(' <TypeList> \lopt `,' \ropt `)' .
-
-	<TypeList> = <Type> \lrep `,' <Type> \rrep .
-
-	<TypeLit> = <ArrayType> | <StructType> | <FunctionType> 
-			%| <InterfaceType> | <PointerType> | <SliceType> | <MapType> | <ChannelType>
+  <ExpressionStmt> ::= \lopt <Expression> \ropt `;' .
+  % TODO: add iteration, flow-control, etc.
+  <Statement> ::= <ExpressionStmt> .
+  
+  <CompoundStatement> ::= `\{' \lrep <Declaration> \rrep \lrep <Statement>
+  \rrep `\}' .
 \end{grammar}
-
-
-
-\subsection*{Array Types}
-\begin{grammar}
-	<ArrayType> = `(' <ArrayLength> `)' <ElementType> .
-
-	<ArrayLength> = <Expression> .
- 
-	<ElementType> = <Type> . 
-\end{grammar}
- 
-\subsection*{Struct Types} 
-\begin{grammar} 
-	<StructType> = `struct' `\{'  \lrep <FieldDecl> `;'  \rrep `\}' .
-
-	<FieldDecl> = \lgrp<IdentifierList Type> | <EmbeddedField>\rgrp \lopt <Tag> \ropt . 
-
-	<EmbeddedField> = \lopt `*' \ropt <TypeName> \lopt <TypeArgs> \ropt .
-
-	<Tag> = <string_lit> .  
-\end{grammar}
-
-
-\subsection*{Function Types} 
-\begin{grammar} 
-	<FunctionType> = `func' <Signature> .
-
-	<Signature> = <Parameters> \lopt <Result> \ropt .
-
-	<Result> = <Parameters> | <Type> .
-
-	<Parameters> = "(" \lopt <ParameterList> \lopt "," \ropt \ropt ")" .
-
-	<ParameterList> = <ParameterDecl> \lrep "," <ParameterDecl> \rrep .
-
-	<ParameterDecl> = \lopt <IdentifierList> \ropt \lopt "..." \ropt <Type> .
-\end{grammar}
-
-\section*{Blocks} 
-\begin{grammar} 
-	<Block> = `\{' <StatementList> `\}' . 
-
-	<StatementList> = \lrep <Statement> `;' \rrep .
-
-\end{grammar}
-
-\section*{Declarations and Scope} 
-\begin{grammar} 
-	<Declaration> = <ConstDecl> | <TypeDecl> | <VarDecl> .
-
-	<TopLevelDecl> = <Declaration> | <FunctionDecl> | <MethodDecl> . 
-\end{grammar} 
-
-
-\subsection*{Constant Declaration}
-\begin{grammar}
-	<ConstDecl> = `const' \lgrp <ConstSpec> | `(' \lrep <ConstSpec> `;' \rrep `)' \rgrp .
-
-	<ConstSpec> = <IdentifierList> \lrep \lrep <Type> `=' <ExpressionList> \rrep
-
-	<IdentifierList> = <identifier> \lrep `,' <identifier> \rrep . 
-
-	<ExpressionList> = <Expression> \lrep `,' <Expression> \rrep . 
-\end{grammar} 
-
-\subsection*{Type Declarations} 
-%binds an identifier to a <Type>. 
-\begin{grammar} 
-	<TypeDecl> = `type' \lgrp <TypeSpec>  | `(' \lrep <TypeSpec> `;' \rrep `)' \rgrp .
-
-	<TypeSpec> = <AliasDecl> | <TypeDef>  .
-\end{grammar} 
-
-\subsection*{Alias Declarations}
-%Binds identifier to type
-\begin{grammar} 
-	<AliasDecl> = <identifier> `=' <Type> . 
-\end{grammar}
-
-
-%This may go 
-\subsection*{Type Definitions}
-%Creates new type with same <UnderlyingType> and operations as given type && binds an identifier
-%Not sure if this stays
-\begin{grammar} 
-	<TypeDef> = <identifier> \lopt <TypeParameters> \ropt  <Type> .
-\end{grammar}
-
-%?? 
-\subsection*{Type Parameter Declarations}
-%Declares type param for a generic function or type declaration.
-%All non-blank names in list must be unique
-%Type parameter replaces w/ <TypeArguement> upon instantiation of generic function or type
-\begin{grammar} 
-	<TypeParameters> = `[' <TypeParamList> \lopt 	`,' \ropt `]' . 
-
-	<TypeParamList> = <TypeParamDecl> \lrep `,' <TypeParamDecl> \rrep .
-	
-	<TypeParamDecl> = <IdentifierList> <TypeConstraint> . 
-\end{grammar} 
-
-%??
-\subsection*{Type Constraints}
-%interface that defines the set of permissible type arguments for the repective type param && controls the operations supported by values of that type param
-%[T ~int] -- okay  
-%type Constraint ~int -- illegal: ~int not in type param list
-\begin{grammar} 
-	<TypeConstraint> = <TypeElem> .
-\end{grammar} 
-
-\section*{Variable Declarations} 
-%Creates one or more <Variables>, binds corresponding identifier, && gives type and initial value
-%i.e. var i int
-\begin{grammar} 
-	<VarDecl> = `var' \lgrp <VarSpec> | `(' \lrep <VarSpec> `;' \rrep `)' \rgrp .
-
-	<VarSpec> = <IdentifierList> \lgrp <Type> \lopt `=' <ExpressionList> \ropt | `=' <ExpressionList> \lgrp .
-\end{grammar}
-
-\subsection*{Short variable declarations}
-%shorthand for <variable declaration> 
-% i, j := 0, 10 
-\begin{grammar} 
-	<ShortVarDecl> = <IdentifierList> `:=' <ExpressionList> .
-\end{grammar}
-
-\section*{Function Declarations} 
-%binds identifier to a function
-%If function declares <TypeParameters>, the function name denotes a generic function
-\begin{grammar} 
-	<FunctionDecl> = `func' <FunctionName> \lopt <TypeParameters> \ropt <Signature> \lopt <FunctionBody> \ropt .
-	
-	<FunctionName> = <identifier> .
-	
-	<FunctionBody> = <Block> .
-\end{grammar} 
-
-\section*{Method Declarations}
-%method is a function w/ a receiver
-%binds an identifier, and associates the method w/ receiver base type
-\begin{grammar} 
-	<MethodDecl> = `func' <Receiver> <MethodName> <Signatue> \lopt <FunctionBody> \ropt .
-
-	<Receiver> = <Parameters> . 
-\end{grammar} 
 
 \section*{Expressions}
+
 \subsection*{Operands}
 \begin{grammar}
 	<Operand> = <Literal> | <OperandName> \lopt <TypeArgs> \ropt | `(' Expression `)' .
@@ -347,11 +254,6 @@ For readability, a single \texttt{\'} character may appear after a base prefix o
 	<BasicLit> = int_lit | float_lit | string_lit . %| rune_lit | | imaginary_lit
 
 	<OperandName> = identifier %| QualifiedIdent
-\end{grammar}
-
-\subsection*{Function literals}
-\begin{grammar}
-	<FunctionLit> = `func' <Signature> <FunctionBody> .
 \end{grammar}
 
 
@@ -515,96 +417,4 @@ For readability, a single \texttt{\'} character may appear after a base prefix o
 \end{grammar}
 \end{document}
 
-%Graveyard 
-
-%SliceTypes Not Supported 
-%SliceType = "[" "]" ElementType
-
-%PointerTypes Not supported 
-%PointerType = "*" BaseType .
-%BaseType    = Type .
-
-%Interfaces not supported 
-%\subsection*{Interface Types} 
-%\begin{grammar}
-%	<InterfaceType>  = `interface' `\{' \lrep <InterfaceElem> `;' \rrep `\}' .
-%
-%	<InterfaceElem> = <MethodElem> | <TypeElem> .
-%
-%	<MethodElem> = <MethodName Signature> .
-%
-%	<MethodName> = <identifier> .
-%
-%	<TypeElem> = <TypeTerm> \lrep `|' <TypeTerm> \rrep .
-%
-%	<TypeTerm> = <Type> | %<UnderlyingType> .
-%
-%	<UnderlyingType>  = `~' <Type> .
-%\end{grammar} 
-
-
-%Map Types not supported 
-%MapType     = "map" "[" KeyType "]" ElementType .
-%KeyType     = Type .
-
-
-%Channel Types not supported 
-%ChannelType = ( "chan" | "chan" "<-" | "<-" "chan" ) ElementType .
-%Not supported
-%Qualified identifiers
-%QualifiedIdent = PackageName "." identifier .
-
-
-%Not supported
-%Composite literals
-%CompositeLit  = LiteralType LiteralValue .
-%LiteralType   = StructType | ArrayType | "[" "..." "]" ElementType |
-%                SliceType | MapType | TypeName [ TypeArgs ] .
-%LiteralValue  = "{" [ ElementList [ "," ] ] "}" .
-%ElementList   = KeyedElement { "," KeyedElement } .
-%KeyedElement  = [ Key ":" ] Element .
-%Key           = FieldName | Expression | LiteralValue .
-%FieldName     = identifier .
-%Element       = Expression | LiteralValue .
-
-%Go statements not supported
-%GoStmt = "go" Expression .
-
-%Not supported 
-%\subsection*{Select statements}
-%\begin{grammar}
-%	<SelectStmt> = `select' `\{' \{ <CommClause> \} `\}' .
-%
-%	<CommClause> = <CommCase> `:' <StatementList> .
-%
-%	<CommCase> = `case' \lgrp <SendStmt> | <RecvStmt> \rgrp | `default' .
-%
-%	<RecvStmt> = \lopt <ExpressionList> `=' | <IdentifierList> `:=' \ropt <RecvExpr> .
-%
-%	<RecvExpr> = <Expression> .
-%\end{grammar}
-
-%Send statements
-%SendStmt = Channel "<-" Expression .
-%Channel  = Expression .
-
-%Not supported
-%Goto statements
-%GotoStmt = "goto" Label .
-
-%Not supported
-%Fallthrough statements
-%FallthroughStmt = "fallthrough" .
-
-%Not supported 
-%Defer statements
-%DeferStmt = "defer" Expression .
-
-%Packages not supported 
-
-%Source file organization
-%SourceFile       = PackageClause ";" { ImportDecl ";" } { TopLevelDecl ";" } .
-
-%Package clause
-%PackageClause  = "package" PackageName .
-%PackageName    = identifier .
+% May the graveyard rest in git where it belongs
