@@ -1,12 +1,12 @@
-from token import Token, TYPES
+from tolkien import Token, TYPES
 
 class Node:
 	def __init__(self, children = None):
 		self.children = children
 		if children:
 			for child in children:
-				self.num_terminals += child.num_terminals
 				assert isinstance(child, Node)
+				self.num_terminals += child.num_terminals
 			assert isinstance(self, Nonterminal)
 		else:
 			assert isinstance(self, Terminal)
@@ -52,7 +52,7 @@ class Reduction:
 		self.reduction = reduction
 
 		for r in reduction:
-			assert isinstance(r, (Rule, TYPES, str))
+			assert isinstance(r, (Rule, Reduction, TYPES, str))
 
 	#If the leftmost tokens match this Reduction,
 	#returns a list of Nodes corresponding to the
@@ -64,7 +64,7 @@ class Reduction:
 		
 		#We match the empty token (i.e., epsilon)
 		if len(self.reduction) == 0:
-			return Terminal(None), 0
+			return [Terminal(None)], 0
 	
 		matches = []
 		tokens_consumed = 0
@@ -73,16 +73,26 @@ class Reduction:
 			try:
 				#If this part of the reduction is another Rule
 				if isinstance(r, Rule):
-					match = r.match(tokens[tokens_consumed:])
+					m = r.descend(tokens[tokens_consumed:])
 					
 					#Need to make sure the Rule actually matched
-					if isinstance(match, int):
-						return None, match + tokens_consumed
+					if isinstance(m, int):
+						# if we backtrack on every rule we shouldn't have consumed any tokens
+						#return None, match + tokens_consumed
+						return None, tokens_consumed
+						
 						
 					#We consumed some amount of Tokens
-					tokens_consumed += match.num_terminals
-					matches.append(match)
-				
+					tokens_consumed += m.num_terminals
+					matches.append(m)
+
+				elif isinstance(r, Reduction):
+					nested_match, nested_tokens_consumed = r.reduce(tokens[tokens_consumed:])
+					if nested_match is None:
+						return None, tokens_consumed
+					matches += nested_match
+					tokens_consumed += nested_tokens_consumed
+					
 				#If this part of the reduction matches a token type or literal value
 				elif self._match_terminal(tokens[tokens_consumed], r):
 					matches.append(Terminal(tokens[tokens_consumed]))
@@ -102,10 +112,40 @@ class Reduction:
 		if isinstance(r, str):
 			return token.value == r
 		else:
-			return token.typename == r
+			# else r is an Enum with token typename values
+			return token.typename == r.value
 
-#Simply an ordered list of Reductions.
-#Equivalent to a line of standard grammar.
+class OptionalReduction(Reduction):
+	def reduce(self, tokens):
+		matches, tokens_consumed = super().reduce(tokens)
+		if matches is None:
+		       matches, tokens_consumed = [Terminal(None)], 0
+		return matches, tokens_consumed
+
+# TODO: need a better way to handle non-matches that doesn't cause infinite recursion
+class RepetitionReduction(Reduction):
+	def reduce(self, tokens):
+		matches = []
+		tokens_consumed = 0
+		while True:
+			iter_matches, iter_tokens_consumed = super().reduce(tokens[tokens_consumed:])
+			if iter_matches is None:
+				break
+			matches += iter_matches
+			# bandaid for now
+			if iter_tokens_consumed == 0:
+				break
+			tokens_consumed += iter_tokens_consumed
+		if len(matches) == 0:
+			return [Terminal(None)], 0
+		return matches, tokens_consumed
+			
+#Simply an ordered list of Reductions, where each reduction is equivalent to an
+#alternate form of a grammer rule.  i.e. Rule ::= Reduction0 | Reduction1 ...
+#
+#Returns either a parse tree containing the derived source code, or an integer
+#if no reductions succeeded giving the maximum tokens consumed along a specific
+#reduction.
 class Rule:
 	name: str
 	reductions: list
@@ -121,19 +161,26 @@ class Rule:
 	#If the leftmost tokens match any of the Reductions,
 	#returns a Nonterminal node with corresponding to this Rule
 	#and with children corresponding to the matching Reduction.
-	def match(self, tokens):
+	def descend(self, tokens):
+		# DEBUG: needed a conditional breakpoint
+		if self.name == 'expression':
+			pass
+		
 		max_consumption = 0
 		for r in self.reductions:
 			reduction, tokens_consumed = r.reduce(tokens)
+
 			if reduction:
-				if not hasattr(reduction, '__iter__'):
-					reduction = [reduction]
+				# can Reduction.reduce() return anything non-nil and non-iterable?
+				# Ahh.. I see, empty case
+				# if not hasattr(reduction, '__iter__'):
+				#	reduction = [reduction]
 				return Nonterminal(self.name, reduction)
 			max_consumption = max(max_consumption, tokens_consumed)
 		return max_consumption
 
 def parse(top_rule, tokens, **kwargs):
-	result = top_rule.match(tokens)
+	result = top_rule.descend(tokens)
 	if isinstance(result, int):
 		raise BaseException('Invalid syntax at ' + str(tokens[result].line) + ':' + str(tokens[result].col))
 	return result

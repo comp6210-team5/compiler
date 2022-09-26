@@ -2,7 +2,7 @@
 #to understand how to use tokens, but not the tokenizer itself
 
 import re
-from enum import Enum, auto
+from enum import Enum
 
 _REGEX_ESCAPES = {
 	'(',
@@ -101,12 +101,11 @@ ALL_OPERATORS = RegexSet.union(ONECHAR_OPERATORS, TWOCHAR_OPERATORS)
 ALL_SYMBOLS = RegexSet.union(KEYWORDS, ALL_OPERATORS)
 
 class TYPES(Enum):
-	OPERATOR = auto()
-	KEYWORD = auto()
-	STRING = auto()
-	NUMBER = auto()
-	ID = auto()
-	LITERAL = auto()
+	OPERATOR = 'operator'
+	KEYWORD = 'keyword'
+	LITERAL = 'literal'
+	IDENTIFIER = 'identifier'
+        
 
 IGNORED_TYPES = frozenset({
 	'comment',
@@ -115,7 +114,7 @@ IGNORED_TYPES = frozenset({
 	'preprocessor',
 })
 
-TYPES = frozenset({
+ALL_TYPES = frozenset({
 	'operator',
 	'keyword',
 	'literal',

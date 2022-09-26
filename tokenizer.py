@@ -1,5 +1,5 @@
 import argparse
-from token import *
+from tolkien import *
 
 def tokenize(source, print_tokens = False):
 	reg = re.compile(rf'(?P<multicomment>{multicomment})|'+\
@@ -28,7 +28,7 @@ def tokenize(source, print_tokens = False):
 		
 		line, col = lc[pos]
 		typename = m.lastgroup
-		if typename not in TYPES:
+		if typename not in ALL_TYPES:
 			raise Exception(f"matched token with typename {typename},"+\
 				"which either means reg has a typo in one of the ?P<typenames>"+\
 				"or reg.search() didn't find a match and returned None.")

@@ -81,8 +81,8 @@ have impact on program meaning/form.
 
 \subsection*{Tokens}
 There are four classes of tokens recognized by the compiler: \emph{identifiers},
-\emph{keywords}, \emph{operators \& punctuation}, and \emph{literals}. As an
-addendum, we further split literals (at the token stage) into \emph{integer
+\emph{keywords}, \emph{operators \& punctuation}, and \emph{literals}. Also,
+we further split literals (at the token stage) into \emph{integer
 literals}, \emph{floating-point literals}, \emph{string literals}, and
 \emph{character literals} to aid parsing. \emph{white\_space} is ignored except
 as it separates tokens, in which case one or more ``white space'' characters are
@@ -190,6 +190,7 @@ including them, outside of strings, aside from say really big numbers.
 
 \section*{Declarations}
 \begin{grammar}
+  % I think this could be simplified as \lrep `*' \rrep in the <Declarator> rule
   <Pointer> ::= `*' \lopt <Pointer> \ropt .
   
   <Declarator> ::= \lopt <Pointer> \ropt <identifier> | \lopt <Pointer> \ropt
@@ -244,177 +245,39 @@ void char short int long float double
 \end{grammar}
 
 \section*{Expressions}
+% We shall try N1570's inheritence-based approach to operator precedence
+% and maybe that just works
 
-\subsection*{Operands}
 \begin{grammar}
-	<Operand> = <Literal> | <OperandName> \lopt <TypeArgs> \ropt | `(' Expression `)' .
+  <PrimaryExpression> ::= <identifier> | <literal> | `(' <Expression> `)' .
 
-	<Literal> = <BasicLit> | <FunctionLit> . %CompositeLit  
+  <NestedPostfixExpression> ::= <PrimaryExpression> <NestedPostfixExpression>
+  \alt `[' <Expression> `]' | `++' | `--' | $\varepsilon$ .
 
-	<BasicLit> = int_lit | float_lit | string_lit . %| rune_lit | | imaginary_lit
+  <PostfixExpression> ::= <PrimaryExpression> <NestedPostfixExpression> .
 
-	<OperandName> = identifier %| QualifiedIdent
+  <UnaryOp> ::= `&' | `*' | `+' | `-' | `~' | `!' | `++' | `--' .
+
+  % TODO: Is there potential ambiguity with ++<Expression> being confused with
+  % +<expression? How do we resolve that?
+  <UnaryExpression> ::= <PostfixExpression> | <UnaryOp> <UnaryExpression> .
+\end{grammar}
+The expression \TT{`+++i'} will be evaluated as \TT{`++(+i)'} due to the
+order that our tokenizer recognizes tokens.
+% TODO: also I didn't know that `+' is a unary op in C... Does it force the
+% expression always positive or treat it as unsigned?
+
+\begin{grammar}
+  <NestedMultiplicativeExpression> ::= <UnaryExpression>
+  <NestedMultiplicativeExpression>
+  \alt `*' <UnaryExpression> | `/' <UnaryExpression> | `\%' <UnaryExpression>
+  \alt $\varepsilon$ .
+  
+  <MultiplicativeExpression> ::= <UnaryExpression>
+  <NestedMultiplicativeExpression> .
+
 \end{grammar}
 
-
-%TODO figure out if supported or nah when not sleep deprived
-\subsection*{Primary expressions}
-\begin{grammar}
-	<PrimaryExpr> = <Operand> | <Conversion> | <MethodExpr> | <PrimaryExpr Arguments> .
-%				<PrimaryExpr Selector> | <PrimaryExpr Index> | <PrimaryExpr Slice> | <PrimaryExpr TypeAssertion> 
-	
-	<Arguments> = `(' \lopt \lgrp <ExpressionList> | <Type> \lopt `,' <ExpressionList> \ropt \rgrp \lopt `...' \ropt \lopt `,' \ropt \ropt `)' .
-%	<Selector> = `.' <identifier> .
-%	<Index> = `[' <Expression> `]' .
-%	<Slice> = `[' [ <Expression> ] `:' [ <Expression> ] `]' |
-%              	 `[' \lopt <Expression> \ropt `:' <Expression> `:' <Expression> `]' .
-%	<TypeAssertion> = `.' `(' <Type> `)' .
-	
-\end{grammar}
-
-
-%%??
-\subsection*{Method expressions}
-\begin{grammar}
-	<MethodExpr> = <ReceiverType> `.' <MethodName> .
-
-	<ReceiverType> = <Type> .
-\end{grammar}
-
-\subsection*{Operators}
-\begin{grammar}
-	<Expression> = <UnaryExpr> | <Expression> <binary_op> <Expression> .
-
-	<UnaryExpr> = <PrimaryExpr> | <unary_op> <UnaryExpr> .
-
-	<binary_op>  = `||' | `\&\&' | <rel_op> | <add_op> | <mul_op> .
-
-	<rel_op> = `==' | `!=' | `<' | `<=' | `>' | `>=' .
-
-	<add_op> = `+' | `-' | `|' | `\^{}' .
-
-	<mul_op> = `*' | `/' | `\%' | `<<' | `>>' | `\&' | `\&\^{}' .
-
-	<unary_op> = `+' | `-' | `!' | `\^{}' | `*' | `\&' %| `<-' .
-\end{grammar}
-
-
-\section*{Statements}
-\begin{grammar}
-	<Statement> =
-		<Declaration> | <LabeledStmt> | <SimpleStmt> | \\
-		<ReturnStmt> | <BreakStmt> | <ContinueStmt> | \\
-		<Block> | <IfStmt> | <SwitchStmt> | <ForStmt> | .
-		%<GoStmt> | <GotoStmt> | <FallthroughStmt> | <SelectStmt> | <DeferStmt>
-
-	<SimpleStmt> = <EmptyStmt> | <ExpressionStmt> | <IncDecStmt> | <Assignment> | <ShortVarDecl> . 
-				%<SendStmt>
-\end{grammar}
-
-%duh
-\subsection*{Empty statements}
-\begin{grammar}
-	<EmptyStmt> = .
-\end{grammar} 
-
-%figure out what this is. may cut
-\subsection*{Labeled statements}
-\begin{grammar}
-	<LabeledStmt> = <Label> `:' <Statement> .
-
-	<Label> = <identifier> .
-\end{grammar}
-
-\section*{Expression statements}
-\begin{grammar}
-	<ExpressionStmt> = <Expression> .
-\end{grammar}
-
-\subsection*{IncDec statements}
-%Increment/Decrement 
-\begin{grammar}
-	<IncDecStmt> = <Expression> \lgrp `++' | `--' \rgrp .
-\end{grammar}
-
-\subsection*{Assignment statements}
-\begin{grammar}
-	<Assignment> = <ExpressionList> <assign_op> <ExpressionList> .
-
-	<assign_op> = \lopt <add_op> | <mul_op> \ropt "=" .
-\end{grammar}
-
-\subsection*{If statements}
-\begin{grammar}
-	<IfStmt> = `if' \lopt <SimpleStmt> `;' \ropt <Expression Block> \ropt `else' \lgrp <IfStmt> | <Block> \rgrp \ropt .
-\end{grammar}
-
-
-
-\subsection*{Switch statements}
-\begin{grammar}
-	<SwitchStmt> = <ExprSwitchStmt> | <TypeSwitchStmt> .
-\end{grammar}
-
-%Maybe
-\subsection*{Expression switches}
-\begin{grammar}
-	<ExprSwitchStmt> = `switch' \lopt <SimpleStmt> `;' \ropt \lopt <Expression> \ropt `\{' \{ <ExprCaseClause> \} `\}' .
-
-	<ExprCaseClause> = <ExprSwitchCase> `:' <StatementList> .
-
-	<ExprSwitchCase> = `case' <ExpressionList> | `default' .
-\end{grammar}
-
-%Maybe 
-\subsection*{Type switches}
-\begin{grammar}
-	<TypeSwitchStmt>  = `switch' \lopt <SimpleStmt> `;' \ropt <TypeSwitchGuard> `\{' \{ <TypeCaseClause> \} `\}' .
-
-	<TypeSwitchGuard> = \lopt <identifier> `:=' \ropt <PrimaryExpr> `.' `(' `type' `)' .
-
-	<TypeCaseClause> = <TypeSwitchCase> `:' <StatementList> .
-
-	<TypeSwitchCase> = `case' <TypeList> | `default' .
-\end{grammar}
-
-
-
-\subsection*{For statements}
-\begin{grammar}
-	<ForStmt> = `for' \lopt <Condition> | <ForClause> | <RangeClause> \ropt <Block> .
-
-	<Condition> = <Expression> .
-\end{grammar}
-
-\subsection*{For statements with for clause}
-\begin{grammar}
-	<ForClause> = \lopt <InitStmt> \ropt `;' \lopt <Condition> \ropt `;' \lopt <PostStmt> \ropt .
-
-	<InitStmt> = <SimpleStmt> .
-
-	<PostStmt> = <SimpleStmt> .
-\end{grammar}
-
-\subsection*{For statements with range clause}
-\begin{grammar}
-	<RangeClause> = \lopt <ExpressionList> `=' | <IdentifierList> `:=' \ropt `range' <Expression> .
-\end{grammar}
-
-\subsection*{Return statements}
-\begin{grammar}
-	<ReturnStmt> = `return' \lopt <ExpressionList> \ropt .
-\end{grammar} 
-
-\subsection*{Break statements}
-\begin{grammar}
-	<BreakStmt> = `break' \lopt Label \ropt .
-\end{grammar}
-
-
-\subsection*{Continue statements}
-\begin{grammar}
-	<ContinueStmt> = `continue' \lopt Label \ropt .
-\end{grammar}
 \end{document}
 
 % May the graveyard rest in git where it belongs
