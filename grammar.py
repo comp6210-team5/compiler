@@ -3,8 +3,6 @@ from parser import Nonterminal
 from tolkien import *
 from tokenizer import tokenize
 
-epsilon = Rule('epsilon')
-
 pointer = Rule('pointer')
 pointer.reductions += [
     Reduction('*', OptionalReduction(pointer)),
@@ -49,7 +47,7 @@ nested_postfix_expression.reductions += [
     Reduction('[', expression, ']'),
     Reduction('++'),
     Reduction('--'),
-    Reduction(epsilon),
+    Reduction(),
 ]
 
 postfix_expression = Rule('postfix_expression')
@@ -81,7 +79,7 @@ nested_multiplicative_expression.reductions += [
     Reduction('*', unary_expression),
     Reduction('/', unary_expression),
     Reduction('%', unary_expression),
-    Reduction(epsilon),
+    Reduction(),
 ]
 
 multiplicative_expression = Rule('multiplicative_expression')
