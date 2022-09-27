@@ -33,6 +33,8 @@ type_specifier.reductions += [
 
 expression = Rule('expression')
 # reductions added after sub-expression-types below
+assignment_expression = Rule('assignment_expression')
+# same
 
 primary_expression = Rule('primary_expression')
 primary_expression.reductions += [
@@ -41,18 +43,20 @@ primary_expression.reductions += [
     Reduction('(', expression, ')'),
 ]
 
-nested_postfix_expression = Rule('nested_postfix_expression')
-nested_postfix_expression.reductions += [
-    Reduction(primary_expression, nested_postfix_expression),
+postfix_tail = Rule('postfix_tail')
+postfix_tail.reductions += [
     Reduction('[', expression, ']'),
+    Reduction('(',
+              OptionalReduction(assignment_expression,
+				RepetitionReduction(',', assignment_expression)),
+	      ')'),
     Reduction('++'),
     Reduction('--'),
-    Reduction(),
 ]
-
+	      
 postfix_expression = Rule('postfix_expression')
 postfix_expression.reductions += [
-    Reduction(primary_expression, nested_postfix_expression),
+    Reduction(primary_expression, RepetitionReduction(postfix_tail)),
 ]
 
 unary_op = Rule('unary_op')
@@ -73,24 +77,111 @@ unary_expression.reductions += [
     Reduction(unary_op, unary_expression),
 ]
 
-nested_multiplicative_expression = Rule('nested_multiplicative_expression')
-nested_multiplicative_expression.reductions += [
-    Reduction(unary_expression, nested_multiplicative_expression),
+multiplicative_tail = Rule('multiplicative_tail')
+multiplicative_tail.reductions += [
     Reduction('*', unary_expression),
     Reduction('/', unary_expression),
     Reduction('%', unary_expression),
-    Reduction(),
 ]
 
 multiplicative_expression = Rule('multiplicative_expression')
 multiplicative_expression.reductions += [
-    Reduction(unary_expression, nested_multiplicative_expression),
+    Reduction(unary_expression, RepetitionReduction(multiplicative_tail)),
 ]
 
-# TODO: the grammar has expression generate a possible comma-separated list of
-# expressions... is that valid?
+additive_tail = Rule('additive_tail')
+additive_tail.reductions += [
+    Reduction('+', multiplicative_expression),
+    Reduction('-', multiplicative_expression),
+]
+
+additive_expression = Rule('additive_expression')
+additive_expression.reductions += [
+    Reduction(multiplicative_expression, RepetitionReduction(additive_tail)),
+]
+
+shift_tail = Rule('shift_tail')
+shift_tail.reductions += [
+    Reduction('<<', additive_expression),
+    Reduction('>>', additive_expression),
+]
+
+shift_expression = Rule('shift_expression')
+shift_expression.reductions += [
+    Reduction(additive_expression, RepetitionReduction(shift_tail)),
+]
+
+relational_tail = Rule('relational_tail')
+relational_tail.reductions += [
+    Reduction('<', shift_expression),
+    Reduction('>', shift_expression),
+    Reduction('<=', shift_expression),
+    Reduction('>=', shift_expression),
+]
+
+relational_expression = Rule('relational_expression')
+relational_expression.reductions += [
+    Reduction(shift_expression, RepetitionReduction(relational_tail)),
+]
+
+equality_tail = Rule('equality_tail')
+equality_tail.reductions += [
+    Reduction('==', relational_expression),
+    Reduction('!=', relational_expression),
+]
+
+equality_expression = Rule('equality_expression')
+equality_expression.reductions += [
+    Reduction(relational_expression, RepetitionReduction(equality_tail)),
+]
+
+and_expression = Rule('and_expression')
+and_expression.reductions += [
+    Reduction(equality_expression, RepetitionReduction('&', equality_expression)),
+]
+
+xor_expression = Rule('xor_expression')
+xor_expression.reductions += [
+    Reduction(and_expression, RepetitionReduction('^', and_expression)),
+]
+
+or_expression = Rule('or_expression')
+or_expression.reductions += [
+    Reduction(xor_expression, RepetitionReduction('|', or_expression)),
+]
+
+logical_and_expression = Rule('logical_and_expression')
+logical_and_expression.reductions += [
+    Reduction(or_expression, RepetitionReduction('&&', or_expression)),
+]
+
+logical_or_expression = Rule('logical_or_expression')
+logical_or_expression.reductions += [
+    Reduction(logical_and_expression, RepetitionReduction('||', logical_and_expression)),
+]
+
+assignment_op = Rule('assignment_op')
+assignment_op.reductions += [
+    Reduction('='),
+    Reduction('*='),
+    Reduction('/='),
+    Reduction('%='),
+    Reduction('+='),
+    Reduction('-='),
+    Reduction('<<='),
+    Reduction('>>='),
+    Reduction('&='),
+    Reduction('^='),
+    Reduction('|='),
+]
+
+assignment_expression.reductions += [
+    Reduction(logical_or_expression),
+    Reduction(unary_expression, assignment_op, assignment_expression),
+]
+
 expression.reductions += [
-    Reduction(multiplicative_expression)
+    Reduction(assignment_expression, RepetitionReduction(',', assignment_expression)),
 ]
 
 expression_statement = Rule('expression_statement')

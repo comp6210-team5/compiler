@@ -236,7 +236,10 @@ void char short int long float double
 \subsection*{Statements and Blocks}
 
 \begin{grammar}
+  <Expression> ::= <AssignmentExpression> \lrep `,' <AssignmentExpression> \rrep .
+  
   <ExpressionStmt> ::= \lopt <Expression> \ropt `;' .
+
   % TODO: add iteration, flow-control, etc.
   <Statement> ::= <ExpressionStmt> .
   
@@ -248,18 +251,29 @@ void char short int long float double
 % We shall try N1570's inheritence-based approach to operator precedence
 % and maybe that just works
 
+% TODO: add some necessary constraints like e.g. "you can't array-index an
+% integer constant", all of the constraints (some of which are necessary for us)
+% are listed in n1570 section 6.5)
+
 \begin{grammar}
   <PrimaryExpression> ::= <identifier> | <literal> | `(' <Expression> `)' .
 
-  <NestedPostfixExpression> ::= <PrimaryExpression> <NestedPostfixExpression>
-  \alt `[' <Expression> `]' | `++' | `--' | $\varepsilon$ .
+  % TODO: the C grammar distinguishes an argument expression list in function
+  % calls from a normal parenthesized ( <Expression> ) in order to distinguish
+  % the "comma operator" as it appears in a normal <Expression> list vs. when it
+  % appears in an argument list. Is this distinction important to us? Do we even
+  % want to support expressions as a sequentially evaluated list of single
+  % expressions? (i.e. the Comma operator, N1570 section 6.5.17)
+  <PostfixTail> ::= `[' <Expression> `]' | `(' \lopt <AssignmentExpression>
+  \lrep `,' <AssignmentExpression> \rrep \ropt `)' | `++' | `- -' .
 
-  <PostfixExpression> ::= <PrimaryExpression> <NestedPostfixExpression> .
+  % TODO: add struct dot operator (and maybe pointer dereference, though that's
+  % unnecessary) when support for structs is added
+  <PostfixExpression> ::= <PrimaryExpression> \lrep <PostfixTail> \rrep .
 
-  <UnaryOp> ::= `&' | `*' | `+' | `-' | `~' | `!' | `++' | `--' .
+  % TODO: typesetting `--' merges into one hyphen.
+  <UnaryOp> ::= `&' | `*' | `+' | `-' | `~' | `!' | `++' | `- -' .
 
-  % TODO: Is there potential ambiguity with ++<Expression> being confused with
-  % +<expression? How do we resolve that?
   <UnaryExpression> ::= <PostfixExpression> | <UnaryOp> <UnaryExpression> .
 \end{grammar}
 The expression \TT{`+++i'} will be evaluated as \TT{`++(+i)'} due to the
@@ -267,15 +281,52 @@ order that our tokenizer recognizes tokens.
 % TODO: also I didn't know that `+' is a unary op in C... Does it force the
 % expression always positive or treat it as unsigned?
 
-\begin{grammar}
-  <NestedMultiplicativeExpression> ::= <UnaryExpression>
-  <NestedMultiplicativeExpression>
-  \alt `*' <UnaryExpression> | `/' <UnaryExpression> | `\%' <UnaryExpression>
-  \alt $\varepsilon$ .
-  
-  <MultiplicativeExpression> ::= <UnaryExpression>
-  <NestedMultiplicativeExpression> .
+% TODO: casting?
 
+\begin{grammar}
+  <MultiplicativeTail> ::= `*' <UnaryExpression> | `/' <UnaryExpression> | `\%'
+  <UnaryExpression> .
+  
+  <MultiplicativeExpression> ::= <UnaryExpression> \lrep <MultiplicativeTail>
+  \rrep .
+
+  <AdditiveTail> ::= `+' <MultiplicativeExpression> | `-'
+  <MultiplicativeExpression> .
+
+  <AdditiveExpression> ::= <MultiplicativeExpression> \lrep <AdditiveTail> \rrep .
+
+  <ShiftTail> ::= `<<' <AdditiveExpression> | `\>\>' <AdditiveExpression> .
+  
+  <ShiftExpression> ::= <AdditiveExpression> \lrep <ShiftTail> \rrep .
+
+  <RelationalTail> ::= `<' <ShiftExpression> | `\>' <ShiftExpression> | `<='
+  <ShiftExpression> | `\>=' <ShiftExpression> .
+  
+  <RelationalExpression> ::= <ShiftExpression> \lrep <RelationalTail> \rrep .
+
+  <EqualityTail> ::= `==' <RelationalExpression> | `!=' <RelationalExpression> .
+  
+  <EqualityExpression> ::= <RelationalExpression> \lrep <EqualityTail> \rrep .
+
+  <AndExpression> ::= <EqualityExpression> \lrep `&' <EqualityExpression> \rrep
+  .
+
+  <XorExpression> ::= <AndExpression> \lrep `^' <AndExpression> \rrep .
+
+  <OrExpression> ::= <XorExpression> \lrep `|' <XorExpression> \rrep .
+
+  <LogicalAndExpression> ::= <OrExpression> \lrep `&&' <OrExpression> \rrep .
+
+  <LogicalOrExpression> ::= <LogicalAndExpression> \lrep `||'
+  <LogicalAndExpression> \rrep .
+
+  % TODO: conditional (i.e. ternary) expressions?
+
+  <AssignmentOp> ::= `=' | `*=' | `/=' | `\%=' | `+=' | `-=' | `<<=' | `\>\>='
+  | `&=' | `^=' | `|=' .
+  
+  <AssignmentExpression> ::= <LogicalOrExpression> | <UnaryExpression>
+  <AssignmentOp> <AssignmentExpression> .
 \end{grammar}
 
 \end{document}
