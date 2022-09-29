@@ -47,7 +47,7 @@ postfix_tail = Rule('postfix_tail')
 postfix_tail.reductions += [
     Reduction('[', expression, ']'),
     Reduction('(',
-              OptionalReduction(assignment_expression,
+	      OptionalReduction(assignment_expression,
 				RepetitionReduction(',', assignment_expression)),
 	      ')'),
     Reduction('++'),
