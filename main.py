@@ -1,5 +1,7 @@
 import argparse
 import tokenizer
+from grammar import program
+from parser import parse
 
 # TODO: does someone use a text editor that inserts tabs rather than spaces?
 # not a big deal if that's the case, I can change my settings to use tabs, we
@@ -10,7 +12,8 @@ def main():
 	# TODO: what was the flag we needed to use to print tokens / intermediate representations?
 	parser.add_argument("-t", "--tokens", action="store_true", help="print tokens to stdout after tokenizing", dest="print_tokens")
 	parser.add_argument("file", help="a filepath of a (single-file) C program to be compiled")
-
+	parser.add_argument("-p", "--parse-tree", action="store_true", help="print parse tree to stdout after parsing", dest="print_parse_tree")
+	
 	# parser.parse_args() should exit and print usage if a file is not given
 	args = parser.parse_args()
 
@@ -21,5 +24,9 @@ def main():
 		# pass that source text to the tokenizer
 		tokens = tokenizer.tokenize(source, args.print_tokens)
 
+		parse_tree = parse(program, tokens)
+		if args.print_parse_tree:
+			print(parse_tree)
+		
 if __name__ == "__main__":
 	main()

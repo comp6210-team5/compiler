@@ -1,4 +1,5 @@
 from tolkien import Token, TYPES
+from typing import Callable
 
 class Node:
 	def __init__(self, children = None):
@@ -59,11 +60,17 @@ class Reduction:
 	# and 
 	# (1) the number of terminals consumed to produce (err.. reduce?)
 	# the match.
-	# if skip is > 0, then skip the first 'skip' parts of the reduction
-	def reduce(self, tokens, skip=0):
+	#
+	# TODO: figure out how to memoize the results of reduce() and descend()
+	# on the same token set (first thought is whenever the generator for a
+	# particular length of tokens is iterated, also store its results in a
+	# list and re-iterate through that list rather than creating any new
+	# generators (new calls to descend() or reduce()) for any particular
+	# length of tokens.
+	def reduce(self, tokens):
 			
 		#We match the empty token (i.e., epsilon)
-		if len(self.reduction[skip:]) == 0:
+		if len(self.reduction) == 0:
 			# TODO: does yield behave the same way as return, in
 			# that anything below this statement isn't executed if
 			# true? Does yielding a single element like this yield
@@ -71,47 +78,100 @@ class Reduction:
 			# iterations? Or will it yield this repeatedly?
 			yield [Terminal(None)], 0
 		else:
-			for i, r in enumerate(self.reduction[skip:]):
+			# Iterate through the parts of the reduction, saving our
+			# place every time we come across a rule or nested
+			# reduction (which may contain a rule). If we make it
+			# through the entire reduction, yield the result. If
+			# we've either yielded a result or hit a part that
+			# doesn't match (an unmatching terminal, or a rule or
+			# nested reduction which returns an exhausted
+			# generator), backtrack to the last rule or nested
+			# reduction and ratchet its returned generator to take a
+			# different path. Continue backtracking until all
+			# potential choices were exhausted.
+			
+			i = 0
+			match_state = []
+			# current token
+			current = 0
+			# generator holder
+			g = None
+			# build a running match (list of Nonterminals,
+			# Terminals) as we go, and save our place at any
+			# opportunity to backtrack. Since we only append to the
+			# match_builder from any point on, we can save the place
+			# by saving its current length (and discarding anything
+			# beyond that length upon backtracking.
+			match_builder = []
+			
+			while True:
+				r = self.reduction[i]
 
-				# TODO: do we need to wrap in a try-catch IndexError block?
+				# TODO: do we need to wrap in a try-catch
+				# IndexError block?  Or better yet, rigorously
+				# figure out indexing and whether the current
+				# token hitting the length of the token list is
+				# a fail condition or if we can keep going to
+				# match empty rules.
 				if isinstance(r, Rule):
-					result = r.descend(tokens)
-				# nested reductions can be thought of as rules
-				# with a single reduction choice
-				elif isinstance(r, Reduction):
-					result = r.reduce(tokens)
-				elif len(tokens) > 0 and self._match_terminal(tokens[0], r):
-					result = [([Terminal(tokens[0])], 1)]
-				else:
-					result = []
-                                resultEmpty = True
-				# for each match and length of match (in tokens) in the result
-				for prefix, len_i in result:
-					resultEmpty = False
-					# TODO: if we skip all of the
-					# reductions, does it return an empty
-					# match successfully?
-					# UPDATE: apparently not?
-					if i+1 == len(self.reduction[skip:]):
-						yield prefix, len_i
+					if g is None:
+						g = r.descend(tokens[current:])
+					
+					result = next(g, None)
+					if result is None:
+						if len(match_state) > 0:
+							i, current, mb_len, g = match_state.pop()
+							match_builder = match_builder[:mb_len]
+							continue
+						else:
+							break
 					else:
-                                                # n.b. this approach doesn't
-                                                # work as well as I'd hoped. The
-                                                # problem is we're essentially
-                                                # defining new grammar rules by
-                                                # skipping the first parts of a
-                                                # reduction, and with that we're
-                                                # creating new left-recursive
-                                                # rules that weren't
-                                                # left-recursive in the original
-                                                # grammar. This seems like a
-                                                # fundamental and unavoidable
-                                                # issue with this approach.
-						for tail, len_j in self.reduce(tokens[len_i:], i+1):
-							yield prefix + tail, len_i + len_j
+						match_state.append((i, current, len(match_builder), g))
+						m, m_len = result
+						match_builder += m
+						current += m_len
+						i += 1
+						g = None
+				
+				elif isinstance(r, Reduction):
+					if g is None:
+						g = r.reduce(tokens[current:])
+					result = next(g, None)
+					if result is None:
+						if len(match_state) > 0:
+							i, current, mb_len, g = match_state.pop()
+							match_builder = match_builder[:mb_len]
+							continue
+						else:
+							break
+					else:
+						match_state.append((i, current, len(match_builder), g))
+						m, m_len = result
+						match_builder += m
+						current += m_len
+						i += 1
+						g = None
+						
+				elif current < len(tokens) and self._match_terminal(tokens[current], r):
+					match_builder.append(Terminal(tokens[current]))
+					current += 1
+					i += 1
+				else:
+					if len(match_state) > 0:
+						i, current, mb_len, g = match_state.pop()
+						match_builder = match_builder[:mb_len]
+						continue
+					else:
+						break
 
-				if resultEmpty:
-					break
+				if i == len(self.reduction):
+					yield match_builder, current
+					if len(match_state) > 0:
+						i, current, mb_len, g = match_state.pop()
+						match_builder = match_builder[:mb_len]
+						continue
+					else:
+						break
 				
 	#Convenience function to match either token types or literal values
 	def _match_terminal(self, token, r):
@@ -122,34 +182,57 @@ class Reduction:
 			return token.typename == r.value
 
 class OptionalReduction(Reduction):
-	def reduce(self, tokens, skip=0):
-		result = next(super().reduce(tokens, skip), None)
-		if result is None:
-			yield [Terminal(None)], 0
-		else:
-			yield result
-
-# TODO: need a better way to handle non-matches that doesn't cause infinite recursion
-class RepetitionReduction(Reduction):
-	def reduce(self, tokens, skip=0):
-		matches = []
-		tokens_consumed = 0
+	def reduce(self, tokens):
+		g = super().reduce(tokens)
 		while True:
-			result = next(super().reduce(tokens[tokens_consumed:], skip), None)
+			result = next(g, None)
 			if result is None:
+				yield [Terminal(None)], 0
 				break
-			matches_i, length_i = result
+			else:
+				yield result
 
-			matches += matches_i
-			# NOTE: ensure that the empty string is not matched
-			# inside a RepetitionReduction otherwise we'll keep
-			# matching that without consuming tokens
-			assert(length_i > 0)
-			tokens_consumed += length_i
-		if len(matches) == 0:
-			yield [Terminal(None)], 0
-		else:
-			yield matches, tokens_consumed
+class RepetitionReduction(Reduction):
+	def reduce(self, tokens):
+		# we have to do the same kind of backtracking in repetitions
+		match_builder = []
+		match_state = []
+		current = 0
+		g = None
+
+		while True:
+			while current < len(tokens):
+				if g is None:
+					g = super().reduce(tokens[current:])
+				
+				result = next(g, None)
+				if result is None:
+					if len(match_state) > 0:
+						current, mb_len, g = match_state.pop()
+						match_builder = match_builder[:mb_len]
+						continue
+					else:
+						break
+				else:
+					match_state.append((current, len(match_builder), g))
+					g = None
+						
+					match_i, len_i = result
+
+					# NOTE: ensure the empty string is not matched
+					# inside a repetition
+					assert(len_i > 0)
+
+					match_builder += match_i
+					current += len_i
+
+					yield match_builder, current
+					
+			if len(match_builder) == 0:
+				yield [Terminal(None)], 0
+				break
+			else:
+				break
 			
 #Simply an ordered list of Reductions, where each reduction is equivalent to an
 #alternate form of a grammer rule.  i.e. Rule ::= Reduction0 | Reduction1 ...
@@ -160,6 +243,12 @@ class RepetitionReduction(Reduction):
 class Rule:
 	name: str
 	reductions: list
+	# function to_ast(), if not None, takes a Nonterminal corresponding to
+	# this rule as input and returns its representation in (as) an abstract
+	# syntax tree. The first to_ast() function of the shallowest Nonterminal
+	# Node in the tree is the only one called by the AST builder, but
+	# sub-nodes' to_ast() method may be called recursively by that.
+	to_ast: Callable
 	
 	#We cannot conveniently init the reductions
 	#because many Reductions will recursively refer
@@ -173,7 +262,7 @@ class Rule:
 	#returns a Nonterminal node with corresponding to this Rule
 	#and with children corresponding to the matching Reduction.
 	def descend(self, tokens):
-		if self.name == 'type_specifier':
+		if self.name == 'top_level_decl':
 			pass
 		for r in self.reductions:
 			for subtree, length in r.reduce(tokens):
@@ -182,14 +271,20 @@ class Rule:
 
 def parse(top_rule, tokens, **kwargs):
 
-	result = next(top_rule.descend(tokens), None)
+	g = top_rule.descend(tokens)
+	result = next(g, None)
+	# the repetition that is the top rule will return each time it matches a
+	# new repetition, so keep doing that until it's matched the whole
+	# program or failed.
+	while result is not None and result[1] < len(tokens):
+		result = next(g, None)
 
 	# TODO: add a max_tokens_consumed-type counter to the new logic
 	# TODO: the top_rule matches the empty program if something internal
 	# fails to parse, therefore it never returns an int. Should revise to
 	# fail if there's tokens remaining and we failed to match them all.
 
-	if not result:
+	if result is None:
 		raise BaseException("Invalid syntax at *shrug*")
 	
-	return result
+	return result[0][0]

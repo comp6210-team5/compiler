@@ -94,8 +94,16 @@ TWOCHAR_OPERATORS = RegexSet({
 	'&&',
 	'||',
 	'++',
-	'--'
-})
+	'--',
+        '*=',
+        '/=',
+        '%=',
+        '+=',
+        '-=',
+        '&=',
+        '^=',
+        '|=',
+}) # TODO: ok to put 3-char operators here?
 
 ALL_OPERATORS = RegexSet.union(ONECHAR_OPERATORS, TWOCHAR_OPERATORS)
 ALL_SYMBOLS = RegexSet.union(KEYWORDS, ALL_OPERATORS)

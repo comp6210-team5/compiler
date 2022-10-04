@@ -236,10 +236,4 @@ program.reductions += [
     Reduction(RepetitionReduction(top_level_decl)),
 ]
 
-# testing
-with open("test.c") as f:
-    source = f.read()
-
-tokens = tokenize(source)
-print(parse(program, tokens))
 
