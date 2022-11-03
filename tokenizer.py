@@ -1,6 +1,6 @@
 import argparse
 from tolkien import *
-
+from valid_pars import *
 def tokenize(source, print_tokens = False):
 	reg = re.compile(rf'(?P<multicomment>{multicomment})|'+\
 			 rf'(?P<comment>{comment})|'+\
@@ -39,6 +39,17 @@ def tokenize(source, print_tokens = False):
 
 		if typename not in IGNORED_TYPES:
 			tokens.append(Token(m[0], typename, line, col))
+
+        #Parenthesis error handling
+	#Still need to implement index for error
+	str = ''.join(f"{token}" for token in tokens)
+
+	print(f"{valid_pars(str)}")
+	if(valid_pars(str) == False):
+		print("Syntax error: Parenthesis/Brackets do not match")
+		exit()
+
+
 	
 	if print_tokens:
 		print('\n'.join(f"{token.typename} l:{token.line} c:{token.col} --- {token}" for token in tokens))
