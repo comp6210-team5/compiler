@@ -44,7 +44,6 @@ def tokenize(source, print_tokens = False):
 	#Still need to implement index for error
 	str = ''.join(f"{token}" for token in tokens)
 
-	print(f"{valid_pars(str)}")
 	if(valid_pars(str) == False):
 		print("Syntax error: Parenthesis/Brackets do not match")
 		exit()
