@@ -23,6 +23,26 @@ class Node:
 				string = string + child._to_string(depth + 1)
 		return string
 	
+	# TODO: below is a method to retroactively remove empty matches since
+	# they complicate AST pruning (it leaves the empty match at the root,
+	# thus when called on the <program> nonterminal still returns a parse
+	# tree for an empty program), but it would be cleaner to avoid adding
+	# empty terminals to the parse tree to start with (by e.g. using a
+	# different return value to signify an empty match, or just letting
+	# Terminal(None) signify an empty match but never adding it to the tree)
+	def prune_empty(self):
+		# ignore Terminals (empty terminals are pruned at a higher level)
+		if self.children is None:
+			return
+		i = 0
+		while i < len(self.children):
+			if self.children[i].num_terminals > 0:
+				self.children[i].prune_empty()
+				i += 1
+			else:
+				self.children.pop(i)
+		return
+				
 class Nonterminal(Node):
 	def __init__(self, rule, children = None):
 		self.num_terminals = 0
@@ -71,11 +91,6 @@ class Reduction:
 			
 		#We match the empty token (i.e., epsilon)
 		if len(self.reduction) == 0:
-			# TODO: does yield behave the same way as return, in
-			# that anything below this statement isn't executed if
-			# true? Does yielding a single element like this yield
-			# it only once, and is exhausted for following
-			# iterations? Or will it yield this repeatedly?
 			yield [Terminal(None)], 0
 		else:
 			# Iterate through the parts of the reduction, saving our
@@ -287,4 +302,5 @@ def parse(top_rule, tokens, **kwargs):
 	if result is None:
 		raise BaseException("Invalid syntax at *shrug*")
 	
+	result[0][0].prune_empty()
 	return result[0][0]
