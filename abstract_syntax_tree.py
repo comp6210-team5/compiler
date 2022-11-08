@@ -35,7 +35,7 @@ def _ast_binary_tail(nonterminal):
     # for rules of this type, the first child should be the operator
     assert(isinstance(nonterminal.children[0], Terminal))
 
-    return ASTNode(name=str(nonterminal.children[0]),
+    return ASTNode(name=nonterminal.children[0].token.value,
                    children=[to_ast(nonterminal.children[1])])
 
 def _ast_unary_expr(nonterminal):
@@ -57,7 +57,7 @@ def _ast_unary_expr(nonterminal):
         # of that distinction by taking only its str() representation in the
         # AST) that could be useful for mapping 3AC instructions based on the
         # specific unary operator
-        return ASTNode(name=str(nonterminal.children[0].children[0]),
+        return ASTNode(name=nonterminal.children[0].children[0].token.value,
                        children=[to_ast(nonterminal.children[1])])
     
 def _ast_postfix_expr(nonterminal):
@@ -70,9 +70,9 @@ def _ast_postfix_expr(nonterminal):
 
 def _ast_primary_expr(nonterminal):
     if len(nonterminal.children) == 1 and nonterminal.children[0].token.typename == "identifier":
-        return ASTNode(name="id: " + str(nonterminal.children[0]))
+        return ASTNode(name="id: " + nonterminal.children[0].token.value)
     elif len(nonterminal.children) == 1:
-        return ASTNode(name=str(nonterminal.children[0]))
+        return ASTNode(name=nonterminal.children[0].token.value)
     elif len(nonterminal.children) == 3:
         assert(nonterminal.children[0].token.value == '(' and nonterminal.children[2].token.value == ')')
         return to_ast(nonterminal.children[1])
@@ -84,7 +84,7 @@ def _ast_assignment_expr(nonterminal):
         return to_ast(nonterminal.children[0])
     elif len(nonterminal.children) == 3:
         # TODO (1): same as TODO 1 in _ast_unary_expr()
-        return ASTNode(name=str(nonterminal.children[1].children[0]),
+        return ASTNode(name=nonterminal.children[1].children[0].token.value,
                        children=[to_ast(nonterminal.children[0]),
                                  to_ast(nonterminal.children[2])])
     else:
@@ -130,15 +130,15 @@ def _ast_nonterminal(nonterminal):
 
 def _ast_program(nonterminal):
     # empty root node to hold everything
-    root = ASTNode()
+    c = []
 
     for child in nonterminal.children:
         assert(isinstance(child, Nonterminal) and child.rule_name == "top_level_decl")
         t = to_ast(child)
         if t is not None:
-            root.children.append(t)
+            c.append(t)
             
-    return root
+    return ASTNode(name="", children=c)
 
 RULE_TO_AST = {
     "multiplicative_expression" : _ast_binary_expr,
