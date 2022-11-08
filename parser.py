@@ -2,26 +2,16 @@ from tolkien import Token, TYPES
 from typing import Callable
 
 class Node:
-	def __init__(self, children = None):
-		self.children = children
-		if children:
-			for child in children:
-				assert isinstance(child, Node)
-				self.num_terminals += child.num_terminals
-			assert isinstance(self, Nonterminal)
-		else:
-			assert isinstance(self, Terminal)
-	
 	def __str__(self):
 		return self._to_string(0)
 	
 	def _to_string(self, depth):
 		string = '|' * depth
 		string = string + self._getname() + '\n'
-		if self.children:
-			for child in self.children:
-				string = string + child._to_string(depth + 1)
+		for child in self.children:
+			string = string + child._to_string(depth + 1)
 		return string
+
 	
 	# TODO: below is a method to retroactively remove empty matches since
 	# they complicate AST pruning (it leaves the empty match at the root,
@@ -31,11 +21,12 @@ class Node:
 	# different return value to signify an empty match, or just letting
 	# Terminal(None) signify an empty match but never adding it to the tree)
 	def prune_empty(self):
-		# ignore Terminals (empty terminals are pruned at a higher level)
-		if self.children is None:
-			return
+		# empty Terminals (for which self.children == []) are pruned at a higher level
+		
 		i = 0
 		while i < len(self.children):
+			# we don't have to update num_terminals since we're only
+			# removing "empty" subtrees
 			if self.children[i].num_terminals > 0:
 				self.children[i].prune_empty()
 				i += 1
@@ -44,29 +35,42 @@ class Node:
 		return
 				
 class Nonterminal(Node):
-	def __init__(self, rule, children = None):
+	def __init__(self, rule_name = "", children = []):
+		self.children = children
 		self.num_terminals = 0
-		super().__init__(children)
-		self.rule = rule
-		assert isinstance(rule, str)
-	
+		self.rule_name = rule_name
+		for child in self.children:
+			assert isinstance(child, Node)
+			self.num_terminals += child.num_terminals
+			
 	def _getname(self):
-		return '<' + self.rule + '>'
+		return '<' + self.rule_name + '>'
 
+	
 class Terminal(Node):
 	def __init__(self, token):
+		self.children = []
 		if token is None:
 			self.num_terminals = 0
 		else:
 			assert isinstance(token, Token)
 			self.num_terminals = 1
 		self.token = token
-		super().__init__()
 		
 	def _getname(self):
 		if self.token is None:
 			return ''
 		return self.token.value
+
+# TODO: tie 3 address code constructs to AST nodes such that we can use that
+# association to easily convert trees into sections of 3AC. 
+class ASTNode(Node):
+	def __init__(self, name='', children = []):
+		self.name = name
+		self.children = children
+
+	def _getname(self):
+		return self.name
 
 class Reduction:
 	def __init__(self, *reduction):
@@ -258,12 +262,6 @@ class RepetitionReduction(Reduction):
 class Rule:
 	name: str
 	reductions: list
-	# function to_ast(), if not None, takes a Nonterminal corresponding to
-	# this rule as input and returns its representation in (as) an abstract
-	# syntax tree. The first to_ast() function of the shallowest Nonterminal
-	# Node in the tree is the only one called by the AST builder, but
-	# sub-nodes' to_ast() method may be called recursively by that.
-	to_ast: Callable
 	
 	#We cannot conveniently init the reductions
 	#because many Reductions will recursively refer
