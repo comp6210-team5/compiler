@@ -2,19 +2,35 @@ from itertools import groupby
 
 registers = {'EAX', 'EBX', 'ECX', 'EDX'}
 
-class Instruction:
-    def __init__(self, priors = []):
-        self.priors = priors
+class Variable:
+    def __init__(self, name, size, stack_pos):
+        self.name = name
+        self.size = size
+        self.stack_pos = stack_pos
+    
+    def store_from_reg(self, reg):
+        return 'mov [esp + {self.stack_pos}], {reg}\n'
+    
+    def load_to_reg(self, reg):
+        return 'mov {reg}, [esp + {self.stack_pos}]\n'
+    
+    def __eq__(self, other):
+        return self.name == other.name
+
+class Parameter(Variable):
+    def __init__(self, name, size, stack_pos):
+        super().__init__(name, size, stack_pos)
+    
+    def store_from_reg(self, reg):
+        return 'mov [ebp + {self.stack_pos} + 8], {reg}\n'
+    
+    def load_to_reg(self, reg):
+        return 'mov {reg}, [ebp + {self.stack_pos} + 8]\n'
 
 class RegisterState:
     def __init__(self, priors = []):
-        self.priors = priors
-        if len(priors) == 1:
-            self.state = priors[0].state.copy()
-            self.map = priors[0].map.copy()
-        else:
-            self.state = {r: None for r in registers}
-            self.map = dict()
+        self.state = {r: None for r in registers}
+        self.map = dict()
     
     def get_empty_register(self, options = registers, force):
         for option in options:
@@ -26,19 +42,27 @@ class RegisterState:
     def assign(self, register, value, overwrite = False):
         if self.state[register] is not None:
             assert overwrite, 'Invalid overwrite' #debug
-            del self.map[self.state[register]]
-        
+            del self.map[self.state[register]]        
         self.state[register] = value
         self.map[value] = register
     
-    def copy(self):
-        return RegisterState(self)
-    
-    def assembly(self):
-        if len(self.priors) == 1:
-            if self.state == self.priors[0].state and self.map == self.priors[0].map:
-                return None
+    def assembly(self, prior = None):
+        code = ''
+        if isinstance(prior, RegisterState):
+            for r, var in prior.state:
+                if var != self.state[r]:
+                    code += var.store_from_reg(r)
+        for r, var in self.state:
+            code += var.load_to_reg(r)
+        return code
                 
+    def __getitem__(self, reg_or_variable):
+        if isinstance(reg_or_variable, Variable):
+            if reg_or_variable in self.map:
+                return self.map[reg_or_variable]
+            return None
+        else:
+            return self.state[reg_or_variable]
 
 class RegisterStates:
     def __init__(self):
@@ -67,30 +91,24 @@ class RegisterStates:
                 self._states[instruction] = RegisterState()
         return self._states[instruction]
 
-class Location:
-    def __init__(self, size, address = None, register = None):
-        self.size = size
-        
-        assert bool(address) ^ bool(register) #xor
-        if address:
-            self.location = address
-        if register == 'any':
-            
-
-class Parameter:
-    def __init__(self, name, type, location):
-        pass
-
 class Function:
-    def __init__(self, name, three_address, ret = None, params = []):
+    def __init__(self, name, three_address, ret = None, params = [], variables = []):
         self.ret = ret
         self.params = params
+        self.variables = sorted(variables, key=lambda x:x.stack_pos)
+        
+        stack_size = 0
+        for variable in self.variables:
+            stack_size += variable.size
         
         self.code = f'{name} PROC\n'
+        self.code += f'push ebp\nmov ebp, esp\nsub esp, {stack_size}\n'
+        
         
         #TODO: assembly for the body of the function
         
+        
+        self.code += 'mov esp, ebp\npop ebp\nret\n'
         self.code += f'{name} ENDP\n'
         
         self.call_asm = f'CALL {name}\n'
-        self.ret_asm = None

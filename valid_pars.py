@@ -9,13 +9,13 @@ def valid_pars(s: str) -> bool:
     opening = set('([{')
     closing = set(')]}')
     pair = {')' : '(' , ']' : '[' , '}' : '{'}
-    for i in s:
-        if i in opening :
+    for i in len(s):
+        if s[i] in opening :
             stack.append(i)
-        if i in closing :
+        if s[i] in closing :
             if not stack :
                 return False
-            elif stack.pop() != pair[i] :
+            elif s[stack.pop()] != pair[s[i]] :
                 return False
             else :
                 continue
