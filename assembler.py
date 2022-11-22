@@ -1,5 +1,6 @@
 from itertools import groupby
 import networkx as nx
+from collections import counter
 
 registers = {'eax', 'ebx', 'ecx', 'edx'}
 
@@ -127,12 +128,11 @@ class RegisterState:
         return code
 
     def __getitem__(self, reg_or_var):
-        if isinstance(reg_or_var, Variable):
-            if reg_or_var in self.variables:
-                return self.variables[reg_or_var]
-            return None
-        else:
+        if reg_or_var in self.variables:
+            return self.variables[reg_or_var]
+        if reg_or_var in self.registers:
             return self.registers[reg_or_var]
+        return None
 
 class Function:
     def __init__(self, name, three_address, ret = None, params = [], variables = []):

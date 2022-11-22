@@ -9,7 +9,7 @@ def valid_pars(s: str) -> bool:
     opening = set('([{')
     closing = set(')]}')
     pair = {')' : '(' , ']' : '[' , '}' : '{'}
-    for i in len(s):
+    for i in range(len(s)):
         if s[i] in opening :
             stack.append(i)
         if s[i] in closing :
