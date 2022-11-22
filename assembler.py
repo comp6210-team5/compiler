@@ -1,154 +1,152 @@
-from itertools import groupby
 import networkx as nx
-from collections import counter
-
-registers = {'eax', 'ebx', 'ecx', 'edx'}
-
-class Variable:
-    def __init__(self, name, size, stack_pos):
-        self.name = name
-        self.size = size
-        self.stack_pos = stack_pos
-    
-    def store_from_reg(self, reg):
-        return f'mov [esp + {self.stack_pos}], {reg}\n'
-    
-    def load_to_reg(self, reg):
-        return f'mov {reg}, [esp + {self.stack_pos}]\n'
-    
-    def move_reg(self, fro, to):
-        return f'mov {to}, {fro}\n'
-
-class Parameter(Variable):
-    def __init__(self, name, size, stack_pos):
-        super().__init__(name, size, stack_pos)
-    
-    def store_from_reg(self, reg):
-        return f'mov [ebp + {self.stack_pos} + 8], {reg}\n'
-    
-    def load_to_reg(self, reg):
-        return f'mov {reg}, [ebp + {self.stack_pos} + 8]\n'
-
-class Temporary:
-    def __init__(self, value):
-        self.value = value
-        assert isinstance(self.value, int)
-    
-    def store_from_reg(self, reg):
-        return ''
-    
-    def load_to_reg(self, reg):
-        return f'mov {reg}, {self.value}\n'
-
-class RegisterState:
-    def __init__(self, priors = []):
-        self.registers = {r: None for r in registers}
-        self.variables = dict()
-    
-    def get_empty_register(self, options = registers):
-        for option in options:
-            if self.registers[option] is None:
-                return self.registers[option]
-        return None
-    
-    def assign(self, variable, register, overwrite = False):
-        if self.registers[register] is not None:
-            assert overwrite #debug
-            del self.variables[self.registers[register]]        
-        self.registers[register] = variable
-        self.variables[variable] = register
-    
-    def assign_several(self, variables, reg_options = registers):
-        options = set(reg_options)
-        needs_assigning = []
-        for var in variables:
-            needs_assigning.append(var)
-            
-            if var in self.variables and self.variables[var] in options:
-                #already loaded into a valid register
-                options.remove(self.variables[var])
-                needs_assigning.pop()
-                    
-        assert len(options) <= len(needs_assigning) #TODO: report
-        for var, reg in zip(needs_assigning, options):
-            self.assign(var, reg, True)
-    
-    def assembly(self, prior = None):
-        code = ''
-        if prior is None:
-            #naively load all from memory
-            for reg, var in self.registers:
-                code += var.load_to_reg(reg)
-            
-        else:
-            #determine what to do with old variables
-            moves = []
-            for var, reg in prior.variables:
-                if var not in self.variables:
-                    #store variables if they should no longer be loaded
-                    code += var.store_from_reg(reg)
-                    
-                elif self.variables[var] != reg:
-                    #variable needs to be moved to a different register
-                    moves.append((reg, self.variables[var]))
-            
-            if moves:
-                # :^)
-                g = nx.DiGraph()
-                g.add_edges_from(moves)
-                for n in g.nodes:
-                    assert g.in_degree(n) <= 1 and g.out_degree(n) <= 1 and \ #debug
-                           g.in_degree(n) + g.out_degree(n) > 0
-
-                while g.number_of_nodes() != 0:
-                    leaves = [n for n in g.nodes if g.out_degree(n) == 0]
-                    if leaves:
-                        for leaf in leaves:
-                            predecessor = next(g.predecessors(leaf))
-                            code += f'mov {leaf}, {predecessor}'
-                            g.remove_node(leaf)
-                            
-                    else:
-                        #the remaining graph is a single cycle, C_i
-                        #I will not be taking requests for a proof at this time
-                        n = next(iter(g.nodes))
-                        successor = next(g.successors(n))
-                        while n is not successor:
-                            predecessor = next(g.predecessors(n))
-                            code += f'xchg {n}, {predecessor}'
-                            n = predecessor
-                        break
-            
-            #now all old variables are where they need to be
-            #load new variables from memory
-            for var, reg in self.variables:
-                if var not in prior.variables:
-                    code += var.load_to_reg(reg)
-                    
-        return code
-
-    def __getitem__(self, reg_or_var):
-        if reg_or_var in self.variables:
-            return self.variables[reg_or_var]
-        if reg_or_var in self.registers:
-            return self.registers[reg_or_var]
-        return None
+from variables import *
 
 class Function:
-    def __init__(self, name, three_address, ret = None, params = [], variables = []):
-        self.ret = ret
-        self.params = params
-        self.variables = sorted(variables, key=lambda x:x.stack_pos)
-        stack_size = sum([v.size for v in variables])
+    def __init__(self, name, tac, ret = None):
+        # states = []
         
-        self.code = f'{name} PROC\n'
-        self.code += f'push ebp\nmov ebp, esp\nsub esp, {stack_size}\n'
+        # #TODO: generate every register state
         
+        # stackless = {var for var in get_stackless_variables(states) if not isinstance(var, Immediate)}
+        # self.start_state = RegisterState()
+        # self.start_state.assign_several(stackless)
+        
+        # local_stacked = set(tac.locals).difference(stackless)
+        # param_stacked = set(tac.params).difference(stackless)
+        # self.stack = StackLayout()
+        
+        # for var in local_stacked:
+            # self.stack.add_local(var)
+        
+        # push_order = []
+        # for var in param_stacked:
+            # self.stack.add_param(var)
+            # push_order.append(tac.params.index(var))
+        # self.pushes = reversed(push_order)
+        
+        self.stack = StackLayout()
+        for var in tac.locals:
+            self.stack.add_local(var)
+        for var in tac.params:
+            self.stack.add_param(var)
+        
+        self.name = name
+        self.code = f'{self.name} PROC\n'
+        self.code += f'push ebp\nmov ebp, esp\nsub esp, {self.stack.local.top}\n'
         
         #TODO: assembly for the body of the function
         
+        if ret and curr_state[ret] != 'eax':
+            #store return value in eax
+            self.code += ret.load_to_reg('eax', stack_positions[ret])
+
+        self.code += 'mov esp, ebp\npop ebp\nret {self.stack.param.top - 8}\n'
+        self.code += f'{self.name} ENDP\n'
+    
+    def generate_call(self, params, calling_stack, calling_registers):
+        code = ''
+        for param in reversed(params):
+        # for index in self.pushes:
+            # param = params[index]
+            if isinstance(param, Immediate):
+                code += f'push {param.value}\n'
+            elif param in calling_registers:
+                code += f'push {calling_registers[param]}\n'
+            else:
+                code += f'push {calling_stack[param]}\n'
         
-        self.code += 'mov esp, ebp\npop ebp\nret\n'
-        self.code += f'{name} ENDP\n'
+        code += self.start_state.assembly(calling_stack, calling_registers)
+        code += f'call {self.name}\n'
+        return code
+
+def from_3_address(three, stack, prior_registers):
+    if three.op == '+':
+        code, registers, dest_register, other = prepare_overwrite(three, stack, prior_registers)
+        code += f'add {dest_register}, {address(other, stack, registers)}\n'
         
-        self.call_asm = f'CALL {name}\n'
+    elif three.op == '-':
+        code, registers, dest_register, other = prepare_overwrite(three, stack, prior_registers)
+        code += f'sub {dest_register}, {address(other, stack, registers)}\n'
+        
+    elif three.op == '*':
+        code, registers, dest_register, other = prepare_overwrite(three, stack, prior_registers)
+        code += f'imul {dest_register}, {address(other, stack, registers)}\n'
+        
+    elif three.op == '/':
+        registers = prior_registers.copy()
+        registers.assign(three.left, 'eax')
+        code = registers.assembly(stack, prior_registers)
+        code += f'idiv {address(three.right, stack, registers)}\n'
+        registers.assign(three.into, 'eax')
+        
+    return code, registers
+
+def address(var, stack, registers):
+    if isinstance(var, Immediate):
+        return var
+    if var in registers:
+        return registers[var]
+    return stack[var]
+
+#For instructions that overwrite one of their operands.
+#Determines which operand is better to overwrite,
+#makes sure it is stored in a register,
+#and that it is ready to be safely overwritten.
+#The returned register state is set up as if three.into
+#were already loaded into the destination register;
+#do not generate assembly using RegisterState.assembly().
+def prepare_overwrite(three, stack, prior_registers):
+    registers = prior_registers.copy()
+    used_regs = set()
+    if three.left:
+        left_loaded = three.left in registers
+        if left_loaded:
+            left_reg = registers[three.left]
+            used_regs.add(left_reg)
+        left_imm = isinstance(three.left, Immediate)
+    if three.right:
+        right_loaded = three.right in registers
+        if right_loaded:
+            right_reg = registers[three.right]
+            used_regs.add(right_reg)
+        right_imm = isinstance(three.right, Immediate)
+    if three.into:
+        into_loaded = three.into in registers
+        if into_loaded:
+            into_reg = registers[three.into]
+            used_regs.add(into_reg)
+        assert not isinstance(three.into, Immediate)
+    other_regs = all_registers.difference(used_regs)
+    
+    if left_imm and right_imm:
+        if left_loaded:
+            dest = three.left
+        else:
+            dest = three.right
+    elif left_imm:
+        dest = three.left
+    elif right_imm:
+        dest = three.right
+    elif left_loaded:
+        dest = three.left
+    else:
+        dest = three.right
+        
+    if dest is three.left:
+        other = three.right
+    else:
+        other = three.left
+    
+    if dest not in registers:
+        registers.lazy_assign(dest, other_regs)
+        code = registers.assembly(stack, prior_registers)
+    elif not isinstance(dest, Immediate):
+        code = f'mov {stack[dest]}, {registers[dest]}\n'
+    
+    dest_register = registers[dest]
+    registers.assign(three.into, dest_register)
+    return code, registers, dest_register, other
+
+def get_stackless_variables(states):
+    #key views are set-like
+    return set().intersection(map(lambda x: x.variables.keys(), states))
