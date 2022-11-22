@@ -1,6 +1,9 @@
 import networkx as nx
 from variables import *
 
+math_comparisons = {'<', '>', '<=', '>=', '==', '!='}
+logic_operators = {'&&', '||', '^'}
+
 class Function:
     def __init__(self, name, tac, ret = None):
         # states = []
@@ -48,40 +51,103 @@ class Function:
         for param in reversed(params):
         # for index in self.pushes:
             # param = params[index]
-            if isinstance(param, Immediate):
-                code += f'push {param.value}\n'
-            elif param in calling_registers:
-                code += f'push {calling_registers[param]}\n'
-            else:
-                code += f'push {calling_stack[param]}\n'
+            code += f'push {addr(param, calling_stack, calling_registers)}\n'
         
         code += self.start_state.assembly(calling_stack, calling_registers)
         code += f'call {self.name}\n'
         return code
 
-def from_3_address(three, stack, prior_registers):
-    if three.op == '+':
+def from_3_addr(three, stack, prior_registers):
+    if not isinstance(three.into, Variable):
+        registers = prior_registers.copy()
+        code = ''
+        if three.left not in registers:
+            registers.lazy_assign(three.left)
+            code += registers.assembly(stack, prior_registers)
+        code += f'cmp {registers[three.left]}, 0\n'
+        code += f'jne {three.into}\n'
+
+    elif three.op == '+':
         code, registers, dest_register, other = prepare_overwrite(three, stack, prior_registers)
-        code += f'add {dest_register}, {address(other, stack, registers)}\n'
+        code += f'add {dest_register}, {addr(other, stack, registers)}\n'
         
     elif three.op == '-':
-        code, registers, dest_register, other = prepare_overwrite(three, stack, prior_registers)
-        code += f'sub {dest_register}, {address(other, stack, registers)}\n'
+        registers = prior_registers.copy()
+        code = ''
+        if three.left not in registers:
+            registers.lazy_assign(three.left, [three.right])
+            code += registers.assembly(stack, prior_registers)
+        code += f'sub {registers[three.left]}, {addr(three.right, stack, registers)}\n'
+        registers.assign(three.into, registers[three.left], True)
         
     elif three.op == '*':
         code, registers, dest_register, other = prepare_overwrite(three, stack, prior_registers)
-        code += f'imul {dest_register}, {address(other, stack, registers)}\n'
+        code += f'imul {dest_register}, {addr(other, stack, registers)}\n'
         
     elif three.op == '/':
         registers = prior_registers.copy()
         registers.assign(three.left, 'eax')
         code = registers.assembly(stack, prior_registers)
-        code += f'idiv {address(three.right, stack, registers)}\n'
-        registers.assign(three.into, 'eax')
+        code += f'idiv {addr(three.right, stack, registers)}\n'
+        registers.assign(three.into, 'eax', True)
+    
+    elif three.op in math_comparisons:
+        registers = prior_registers.copy()
+        if three.left in registers:
+            code = f'cmp {registers[three.left]}, {addr(three.right, stack, registers)}\n'
+        elif three.right in registers and three.left in stack:
+            code = f'cmp {stack[three.left]}, {registers[three.right]}\n' 
+        else:
+            registers.lazy_assign(three.left, [three.right])
+            code = registers.assembly(stack, prior_registers)
+            code += f'cmp {registers[three.left]}, {addr(three.right, stack, registers)}\n'
+        
+        code += f'mov {address(three.into, stack, registers)}, 0\n'
+        
+        if three.op == '==':
+            code += 'sete'
+        elif three.op == '!=':
+            code += 'setne'
+        elif three.op == '>':
+            code += 'setg'
+        elif three.op == '>=':
+            code += 'setge'
+        elif three.op == '<':
+            code += 'setl'
+        elif three.op == '<=':
+            code += 'setle'
+        else:
+            assert False
+            
+        if three.into in registers:
+            reg = registers[three.into]
+            if reg == 'eax':
+                code += ' al\n'
+            elif reg == 'ebx':
+                code += ' bl\n'
+            elif reg == 'ecx':
+                code += ' cl\n'
+            elif reg == 'edx':
+                code += ' dl\n'
+            else:
+                assert False
+        else:
+            code += f' {stack[three.into].split('PTR ')[1]}\n'
+    
+    elif three.op in logic_operators:
+        code, registers, dest_register, other = prepare_overwrite(three, stack, prior_registers)
+        if three.op == '&&':
+            code += f'and {dest_register}, {addr(other, stack, registers)}\n'
+        elif three.op == '||':
+            code += f'or {dest_register}, {addr(other, stack, registers)}\n'
+        elif three.op == '^':
+            code += f'xor {dest_register}, {addr(other, stack, registers)}\n'
+        else:
+            assert False
         
     return code, registers
 
-def address(var, stack, registers):
+def addr(var, stack, registers):
     if isinstance(var, Immediate):
         return var
     if var in registers:
@@ -97,26 +163,11 @@ def address(var, stack, registers):
 #do not generate assembly using RegisterState.assembly().
 def prepare_overwrite(three, stack, prior_registers):
     registers = prior_registers.copy()
-    used_regs = set()
-    if three.left:
-        left_loaded = three.left in registers
-        if left_loaded:
-            left_reg = registers[three.left]
-            used_regs.add(left_reg)
-        left_imm = isinstance(three.left, Immediate)
-    if three.right:
-        right_loaded = three.right in registers
-        if right_loaded:
-            right_reg = registers[three.right]
-            used_regs.add(right_reg)
-        right_imm = isinstance(three.right, Immediate)
-    if three.into:
-        into_loaded = three.into in registers
-        if into_loaded:
-            into_reg = registers[three.into]
-            used_regs.add(into_reg)
-        assert not isinstance(three.into, Immediate)
-    other_regs = all_registers.difference(used_regs)
+    
+    left_loaded = three.left in registers
+    left_imm = isinstance(three.left, Immediate)
+    right_loaded = three.right in registers
+    right_imm = isinstance(three.right, Immediate)
     
     if left_imm and right_imm:
         if left_loaded:
@@ -138,13 +189,13 @@ def prepare_overwrite(three, stack, prior_registers):
         other = three.left
     
     if dest not in registers:
-        registers.lazy_assign(dest, other_regs)
+        registers.lazy_assign(dest, [other])
         code = registers.assembly(stack, prior_registers)
     elif not isinstance(dest, Immediate):
         code = f'mov {stack[dest]}, {registers[dest]}\n'
     
     dest_register = registers[dest]
-    registers.assign(three.into, dest_register)
+    registers.assign(three.into, dest_register, True)
     return code, registers, dest_register, other
 
 def get_stackless_variables(states):

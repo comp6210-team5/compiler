@@ -6,6 +6,7 @@ class Variable:
     def __init__(self, name, size):
         self.name = name
         self.size = size
+        assert self.size in [1, 2, 4]
         
 class Immediate:
     def __init__(self, value):
@@ -25,7 +26,7 @@ class LocalStackLayout:
         self.top += var.size
     
     def __getitem__(self, var):
-        return f'[esp + {self.stack[var]}]'
+        return f'DWORD PTR [esp + {self.stack[var]}]'
     
     def __contains__(self, var):
         return var in self.stack
@@ -47,7 +48,7 @@ class ParamStackLayout:
         self.top += var.size
     
     def __getitem__(self, var):
-        return f'[ebp + {self.stack[var]}]'
+        return f'DWORD PTR [ebp + {self.stack[var]}]'
     
     def __contains__(self, var):
         return var in self.stack
@@ -92,38 +93,35 @@ class RegisterState:
         self.reg2var = {r: None for r in all_registers}
         self.var2reg = dict()
     
-    def get_empty_register(self, reg_options = all_registers):
-        for option in reg_options:
-            if isinstance(self.reg2var[option], (NoneType, Immediate)):
-                return option
-        return None
-    
-    def assign(self, var, reg):
+    def assign(self, var, reg, discard = False):
         if var in self.var2reg and self.var2reg[var] != reg:
             #Variable is loaded into a different register
             if self.reg2var[reg] is not None:
-                #Destination register already has a variable;
-                #move it into the register we previously occupied
-                
-                #The variable in the register we are currently in
-                #equals the variable in our destination register
-                self.reg2var[self.var2reg[var]] = self.reg2var[reg]
-                
-                #The register holding the variable in our destination
-                #register equals the register we are currently in
-                self.var2reg[self.reg2var[reg]] = self.var2reg[var]
-                
-                #Jesus help me I've been coding for 12 hours straight
-                #Does Python have 2-way dictionaries? Please?
-                
+                if discard:
+                    del self.var2reg[self.reg2var[reg]]
+                    self.reg2var[self.var2reg[var]] = None
+                    
+                else:
+                    #Destination register already has a variable;
+                    #move it into the register we previously occupied
+                    
+                    #The variable in the register we are currently in
+                    #equals the variable in our destination register
+                    self.reg2var[self.var2reg[var]] = self.reg2var[reg]
+                    
+                    #The register holding the variable in our destination
+                    #register equals the register we are currently in
+                    self.var2reg[self.reg2var[reg]] = self.var2reg[var]
+                    
+                    #Jesus help me I've been coding for 12 hours straight
+                    #Does Python have 2-way dictionaries? Please?
+                    
             else:
-                #Delete our entry in the old register
                 self.reg2var[self.var2reg[var]] = None
-                del self.var2reg[var]
             
         elif self.reg2var[reg] is not None:
             #Destination register already has a variable
-            if open := self.get_empty_register(all_registers - {reg}):
+            if not discard and open := self.get_empty_register(all_registers - {reg}):
                 #Move it into an unoccupied register
                 
                 #The register holding the variable in our
@@ -141,15 +139,32 @@ class RegisterState:
         self.reg2var[reg] = var
         self.var2reg[var] = reg
     
-    def lazy_assign(self, var, reg_options = all_registers):
-        open = self.get_empty_register(reg_options)
-        if open:
+    def get_options(self, exclusions):
+        options = all_registers
+        if exclusions is None:
+            return options
+        for val in exclusions:
+            if val in options:
+                options.remove(val)
+            elif val in self.var2reg:
+                options.remove(self.var2reg[val])
+        return options
+    
+    def get_empty_register(self, exclusions = None):
+        for option in self.get_options(exclusions):
+            if isinstance(self.reg2var[option], (NoneType, Immediate)):
+                return option
+        return None
+    
+    def lazy_assign(self, var, exclusions = None):
+        options = self.get_options(exclusions)
+        if open := self.get_empty_register(options):
             self.assign(var, open)
         else:
-            self.assign(var, random.choice(list(reg_options)))
+            self.assign(var, random.choice(list(options)))
     
-    def assign_several(self, variables, reg_options = all_registers):
-        options = set(reg_options)
+    def assign_several(self, variables, exclusions = None):
+        options = self.get_options(exclusions)
         needs_assigning = []
         for var in variables:
             needs_assigning.append(var)
