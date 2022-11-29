@@ -6,7 +6,7 @@ class Variable:
     def __init__(self, name, size):
         self.name = name
         self.size = size
-        assert self.size in [1, 2, 4]
+        assert self.size == 4
         
 class Immediate:
     def __init__(self, value):
@@ -215,14 +215,15 @@ class RegisterState:
                             g.remove_node(leaf)
                             
                     else:
-                        #the remaining graph is a single cycle, C_i
+                        #every component of the remaining graph is a single cycle, C_i
                         #I will not be taking requests for a proof at this time
-                        n = next(iter(g.nodes))
-                        successor = next(g.successors(n))
-                        while n is not successor:
-                            predecessor = next(g.predecessors(n))
-                            code += f'xchg {n}, {predecessor}'
-                            n = predecessor
+                        for cycle in nx.strongly_connected_components(G):
+                            n = next(iter(cycle))
+                            successor = next(g.successors(n))
+                            while n is not successor:
+                                predecessor = next(g.predecessors(n))
+                                code += f'xchg {n}, {predecessor}'
+                                n = predecessor
                         break
             
             #now all old variables are where they need to be
