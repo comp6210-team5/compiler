@@ -6,27 +6,6 @@ logic_operators = {'&&', '||', '^'}
 
 class Function:
     def __init__(self, name, tac, ret = None):
-        # states = []
-        
-        # #TODO: generate every register state
-        
-        # stackless = {var for var in get_stackless_variables(states) if not isinstance(var, Immediate)}
-        # self.start_state = RegisterState()
-        # self.start_state.assign_several(stackless)
-        
-        # local_stacked = set(tac.locals).difference(stackless)
-        # param_stacked = set(tac.params).difference(stackless)
-        # self.stack = StackLayout()
-        
-        # for var in local_stacked:
-            # self.stack.add_local(var)
-        
-        # push_order = []
-        # for var in param_stacked:
-            # self.stack.add_param(var)
-            # push_order.append(tac.params.index(var))
-        # self.pushes = reversed(push_order)
-        
         self.stack = StackLayout()
         for var in tac.locals:
             self.stack.add_local(var)
@@ -49,8 +28,6 @@ class Function:
     def generate_call(self, params, calling_stack, calling_registers):
         code = ''
         for param in reversed(params):
-        # for index in self.pushes:
-            # param = params[index]
             code += f'push {addr(param, calling_stack, calling_registers)}\n'
         
         code += self.start_state.assembly(calling_stack, calling_registers)
