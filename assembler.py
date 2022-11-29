@@ -174,7 +174,3 @@ def prepare_overwrite(three, stack, prior_registers):
     dest_register = registers[dest]
     registers.assign(three.into, dest_register, True)
     return code, registers, dest_register, other
-
-def get_stackless_variables(states):
-    #key views are set-like
-    return set().intersection(map(lambda x: x.variables.keys(), states))
