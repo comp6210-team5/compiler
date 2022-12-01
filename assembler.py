@@ -22,7 +22,7 @@ class Function:
             #store return value in eax
             self.code += ret.load_to_reg('eax', stack_positions[ret])
 
-        self.code += 'mov esp, ebp\npop ebp\nret {self.stack.param.top - 8}\n'
+        self.code += f'mov esp, ebp\npop ebp\nret {self.stack.param.top - 8}\n'
         self.code += f'{self.name} ENDP\n'
     
     def generate_call(self, params, calling_stack, calling_registers):
