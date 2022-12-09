@@ -3,6 +3,7 @@ from variables import *
 
 math_comparisons = {'<', '>', '<=', '>=', '==', '!='}
 logic_operators = {'&&', '||', '^'}
+assignment_operators = {'=', '*=', '/=', '%=', '+=', '-=', '<<=', '>>=', '&=', '^=', '|='}
 
 class Function:
     def __init__(self, name, tac, ret = None):
@@ -121,7 +122,51 @@ def from_3_addr(three, stack, prior_registers):
             code += f'xor {dest_register}, {addr(other, stack, registers)}\n'
         else:
             assert False
-        
+    
+    #----------------------------------------------------------------------------------------------------------------
+    #assignment_operators = {'=', '*=', '/=', '%=', '+=', '-=', '<<=', '>>=', '&=', '^=', '|='}
+    elif three.op in assignment_operators:
+        if three.op == '=': 
+            code += f'mov {registers[three.left]}, {registers[three.right]}'
+
+        elif three.op == '*=':
+            code += 'mov eax, 0\n'
+            code += f'mov eax, {registers[three.right]}\n'
+            code += f'mul {registers[three.left]}\n'
+
+        elif three.op == '/=':
+            code += 'mov eax, 0\n'
+            code += f'mov eax, {registers[three.right]}\n'
+            code += f'div {registers[three.left]}\n'
+
+        elif three.op == '%=':
+            code += 'mov eax, 0\nmov edx, 0\n'
+            code += f'mov eax, {registers[three.right]}\n'
+            code += f'div {registers[three.left]}\n'
+            code += f'mov {registers[three.left]}, edx\n'
+
+        elif three.op == '+=':
+            code += f'add {registers[three.left]}, {registers[three.right]}'
+
+        elif three.op == '-=':
+            code += f'sub {registers[three.left]}, {registers[three.right]}'
+
+        #shl and shr probably not working correctly
+        elif three.op == '<<='
+            code += f'shl {register[three.left]}, {three.right}'
+
+        elif three.op == '<<='
+            code += f'shr {register[three.left]}, {three.right}'
+
+        elif three.op == '&=':
+            code += f'and {registers[three.left]}, {registers[three.right]}'
+
+        elif three.op == '^=':
+            code += f'xor {registers[three.left]}, {registers[three.right]}'
+            
+        elif three.op == '|=':
+            code += f'or {registers[three.left]}, {registers[three.right]}'
+            
     return code, registers
 
 def addr(var, stack, registers):
