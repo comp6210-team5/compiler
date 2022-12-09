@@ -123,8 +123,6 @@ def from_3_addr(three, stack, prior_registers):
         else:
             assert False
     
-    #----------------------------------------------------------------------------------------------------------------
-    #assignment_operators = {'=', '*=', '/=', '%=', '+=', '-=', '<<=', '>>=', '&=', '^=', '|='}
     elif three.op in assignment_operators:
         if three.op == '=': 
             code += f'mov {registers[three.left]}, {registers[three.right]}'
@@ -163,7 +161,7 @@ def from_3_addr(three, stack, prior_registers):
 
         elif three.op == '^=':
             code += f'xor {registers[three.left]}, {registers[three.right]}'
-            
+
         elif three.op == '|=':
             code += f'or {registers[three.left]}, {registers[three.right]}'
             
